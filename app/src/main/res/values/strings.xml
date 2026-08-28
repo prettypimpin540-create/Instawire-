@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">InstaWire</string>
+    <string name="widget_name">InstaWire Quick Connect</string>
+    <string name="widget_description">Quickly connect to tactical channels and contacts from home screen</string>
 </resources>

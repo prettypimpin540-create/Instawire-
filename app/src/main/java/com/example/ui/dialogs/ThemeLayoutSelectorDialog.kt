@@ -181,9 +181,9 @@ fun ThemeLayoutSelectorDialog(
                             .clickable {
                                 onOpenPurchaseModal(
                                     "ALL_THEMES_PASS",
-                                    "InstaWire VIP All-Themes Pass ($0.99)",
-                                    "$0.99",
-                                    "Unlock all 5 tactical layouts, 10 theme color palettes, and 7 PTT sound profiles permanently with 1 tap."
+                                    "InstaWire All 6 Themes Pack ($5.94)",
+                                    "$5.94",
+                                    "Unlock all 6 premium color themes for sale (Matrix Emerald, Violet Eclipse, Desert Gold, Arctic Ice, Solar Flare, Night Vision Mono) at $0.99 each ($5.94 total)."
                                 )
                             }
                             .testTag("all_themes_pass_banner"),
@@ -206,14 +206,14 @@ fun ThemeLayoutSelectorDialog(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(
-                                        text = "VIP UNLOCK ALL PACK ($0.99)",
+                                        text = "ALL THEMES PACK ($5.94)",
                                         color = BurnerGold,
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         fontFamily = FontFamily.Monospace
                                     )
                                     Text(
-                                        text = "Unlock all 5 layouts, 10 themes & 7 sounds",
+                                        text = "Unlock all 6 themes for sale (6 x $0.99 = $5.94)",
                                         color = TacticalTextSecondary,
                                         fontSize = 10.sp
                                     )
@@ -227,7 +227,7 @@ fun ThemeLayoutSelectorDialog(
                                     .padding(horizontal = 10.dp, vertical = 5.dp)
                             ) {
                                 Text(
-                                    text = "$0.99 BUY",
+                                    text = "$5.94 BUY",
                                     color = TacticalDarkBg,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Black,
@@ -519,6 +519,91 @@ private fun ThemesTabContent(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(bottom = 12.dp)
     ) {
+        if (!userIdentity.hasPurchasedThemePack) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .border(1.5.dp, BurnerGold, RoundedCornerShape(14.dp))
+                        .clickable {
+                            onOpenPurchaseModal(
+                                "ALL_THEMES_PASS",
+                                "All 6 Themes Pack ($5.94)",
+                                "$5.94",
+                                "Unlock all 6 premium color themes for sale (Matrix Emerald, Violet Eclipse, Desert Gold, Arctic Ice, Solar Flare, Night Vision Mono) at the complete sum of $5.94 ($0.99 x 6)."
+                            )
+                        }
+                        .testTag("themes_tab_buy_all_card"),
+                    colors = CardDefaults.cardColors(containerColor = TacticalSurfaceElevated)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(BurnerGold.copy(alpha = 0.2f))
+                                    .border(1.5.dp, BurnerGold, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = "Star",
+                                    tint = BurnerGold,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "BUY ALL 6 THEMES FOR SALE",
+                                    color = BurnerGold,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Black,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = "Total of all 6 themes ($0.99 ea = $5.94 total)",
+                                    color = TacticalTextSecondary,
+                                    fontSize = 11.sp
+                                )
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                onOpenPurchaseModal(
+                                    "ALL_THEMES_PASS",
+                                    "All 6 Themes Pack ($5.94)",
+                                    "$5.94",
+                                    "Unlock all 6 premium color themes for sale (Matrix Emerald, Violet Eclipse, Desert Gold, Arctic Ice, Solar Flare, Night Vision Mono) at the complete sum of $5.94 ($0.99 x 6)."
+                                )
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = BurnerGold),
+                            shape = RoundedCornerShape(8.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("buy_all_themes_button_tab")
+                        ) {
+                            Text(
+                                text = "$5.94 BUY",
+                                color = TacticalDarkBg,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
         items(AppThemeScheme.values()) { theme ->
             val isSelected = userIdentity.themeScheme == theme
             val isUnlocked = userIdentity.isThemeUnlocked(theme)

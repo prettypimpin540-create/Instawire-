@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -39,6 +40,7 @@ import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Person
@@ -125,6 +127,10 @@ fun WalkieTalkieScreen(
     onToggleNoiseCancellation: () -> Unit = {},
     onOpenSubscriptionPlans: () -> Unit = {},
     onOpenThemeSelector: () -> Unit = {},
+    onOpenMenu: () -> Unit = {},
+    onOpenScanners: () -> Unit = {},
+    onOpenWeather: () -> Unit = {},
+    onOpenEmergency: () -> Unit = {},
     onPlayTransmission: (Transmission) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -154,58 +160,9 @@ fun WalkieTalkieScreen(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // Layout & Customization Quick Action Banner
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
-                .background(TacticalSurfaceElevated)
-                .border(1.dp, TacticalCardBorder, RoundedCornerShape(10.dp))
-                .clickable { onOpenThemeSelector() }
-                .padding(horizontal = 12.dp, vertical = 6.dp)
-                .testTag("layout_quick_switch_banner"),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Palette,
-                    contentDescription = null,
-                    tint = accentColor,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(
-                    text = "LAYOUT: ${userIdentity.layoutType.title.uppercase()}",
-                    color = TacticalTextPrimary,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(accentColor.copy(alpha = 0.2f))
-                    .border(1.dp, accentColor, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
-            ) {
-                Text(
-                    text = "CUSTOMIZE",
-                    color = accentColor,
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Black,
-                    fontFamily = FontFamily.Monospace
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Target Frequency / Contact Banner
+        // Clean & Focused Active Channel / Target Card
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -218,7 +175,6 @@ fun WalkieTalkieScreen(
                     else TacticalCardBorder,
                     RoundedCornerShape(16.dp)
                 )
-                .clickable { onOpenSafetyKey() }
                 .testTag("active_target_banner"),
             colors = CardDefaults.cardColors(containerColor = TacticalSurface)
         ) {
@@ -290,105 +246,7 @@ fun WalkieTalkieScreen(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Quick-Access Toggle for Advanced Noise Cancellation Filter
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .border(
-                    1.dp,
-                    if (userIdentity.noiseFilterEnabled) accentColor.copy(alpha = 0.4f) else TacticalCardBorder,
-                    RoundedCornerShape(12.dp)
-                )
-                .clickable { onOpenNoiseCancel() }
-                .testTag("noise_cancellation_quick_toggle_card"),
-            colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(
-                                if (userIdentity.noiseFilterEnabled) Color(userIdentity.themeScheme.darkHex) else TacticalSurfaceElevated
-                            )
-                            .border(
-                                1.dp,
-                                if (userIdentity.noiseFilterEnabled) accentColor else TacticalCardBorder,
-                                CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.GraphicEq,
-                            contentDescription = "Noise Filter Icon",
-                            tint = if (userIdentity.noiseFilterEnabled) accentColor else TacticalTextMuted,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(10.dp))
-
-                    Column {
-                        Text(
-                            text = "ADVANCED NOISE CANCELLATION",
-                            color = if (userIdentity.noiseFilterEnabled) glowColor else TacticalTextPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Text(
-                            text = if (userIdentity.noiseFilterEnabled) {
-                                "${userIdentity.noiseFilterMode.label} (-28dB Filter Active)"
-                            } else {
-                                "Direct Raw Passthrough (Filter Off)"
-                            },
-                            color = if (userIdentity.noiseFilterEnabled) TacticalCyan else TacticalTextMuted,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-                }
-
-                Switch(
-                    checked = userIdentity.noiseFilterEnabled,
-                    onCheckedChange = { onToggleNoiseCancellation() },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = accentColor,
-                        checkedTrackColor = Color(userIdentity.themeScheme.darkHex),
-                        uncheckedThumbColor = TacticalTextMuted,
-                        uncheckedTrackColor = TacticalSurfaceElevated,
-                        uncheckedBorderColor = TacticalCardBorder
-                    ),
-                    modifier = Modifier.testTag("quick_noise_cancellation_switch")
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Quick Targets Switcher Strip
-        Text(
-            text = "QUICK FREQUENCY CHANNELS & DIRECT CONTACTS",
-            color = TacticalTextMuted,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Spacer(modifier = Modifier.height(6.dp))
-
+        // Quick Targets Switcher Strip (Clean, scannable horizontal chips)
         LazyRow(
             modifier = Modifier
                 .fillMaxWidth()
@@ -545,9 +403,9 @@ fun WalkieTalkieScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Live Audio Transmission Status Indicator
+        // Clean Live Status Indicator Pill
         Row(
             modifier = Modifier
                 .clip(RoundedCornerShape(20.dp))
@@ -581,10 +439,10 @@ fun WalkieTalkieScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Text(
                 text = when {
-                    isTransmitting -> "AIRWAVES HOT • TRANSMITTING VIA AES-256"
-                    isIncoming -> "RECEIVING ENCRYPTED VOICE PACKET"
-                    isE2eeActive -> "ZERO-LAG E2EE SECURE MESH READY"
-                    else -> "UNENCRYPTED PUBLIC AIRWAVES (FREE)"
+                    isTransmitting -> "AIRWAVES HOT • TRANSMITTING"
+                    isIncoming -> "RECEIVING VOICE TRANSMISSION"
+                    isE2eeActive -> "READY • 256-BIT E2EE ENCRYPTED"
+                    else -> "UNENCRYPTED AIRWAVES"
                 },
                 color = when {
                     isTransmitting -> PttRedGlow
@@ -598,126 +456,247 @@ fun WalkieTalkieScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-        // Recent Radio Chatter Snippets
+        // Beginner-Friendly Quick Live Feeds & Public Safety Hub
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "RECENT RADIO TRANSMISSIONS",
-                color = TacticalTextMuted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
-            )
-
-            Text(
-                text = "${recentTransmissions.size} LOGGED",
-                color = accentColor,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        if (recentTransmissions.isEmpty()) {
-            Box(
+            // Live Scanners
+            Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(TacticalSurface)
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, TacticalCyan.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                    .clickable { onOpenScanners() }
+                    .testTag("walkie_quick_scanners_button"),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurfaceElevated)
             ) {
-                Text(
-                    text = "Press and hold the PTT button to transmit on this channel",
-                    color = TacticalTextMuted,
-                    fontSize = 12.sp,
-                    fontFamily = FontFamily.Monospace
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 9.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Radio,
+                        contentDescription = "Live Scanners",
+                        tint = TacticalCyan,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "SCANNERS",
+                        color = TacticalCyan,
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "Police / Fire",
+                        color = TacticalTextMuted,
+                        fontSize = 8.5.sp
+                    )
+                }
             }
-        } else {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                recentTransmissions.take(3).forEach { transmission ->
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(TacticalSurface)
-                            .border(1.dp, TacticalCardBorder, RoundedCornerShape(10.dp))
-                            .clickable { onPlayTransmission(transmission) }
-                            .padding(10.dp)
-                            .testTag("transmission_item_${transmission.id}")
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(32.dp)
-                                        .clip(CircleShape)
-                                        .background(TacticalSurfaceElevated),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Play Transmission",
-                                        tint = accentColor,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = transmission.senderName,
-                                        color = TacticalTextPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 12.sp,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = "Duration: %.1fs • %s".format(transmission.durationSeconds, transmission.senderNumber),
-                                        color = TacticalTextMuted,
-                                        fontSize = 10.sp,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
 
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = "Encrypted",
-                                    tint = accentColor,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Text(
-                                    text = "E2EE",
-                                    color = accentColor,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
+            // NOAA Weather
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, Color(0xFF60A5FA).copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                    .clickable { onOpenWeather() }
+                    .testTag("walkie_quick_weather_button"),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurfaceElevated)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 9.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.GraphicEq,
+                        contentDescription = "NOAA Weather",
+                        tint = Color(0xFF60A5FA),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "WEATHER",
+                        color = Color(0xFF60A5FA),
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "NOAA 24/7 NWS",
+                        color = TacticalTextMuted,
+                        fontSize = 8.5.sp
+                    )
+                }
+            }
+
+            // Emergency & Coast Guard
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, PttHotRed.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    .clickable { onOpenEmergency() }
+                    .testTag("walkie_quick_emergency_button"),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurfaceElevated)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 9.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Shield,
+                        contentDescription = "Emergency 911 / Coast Guard",
+                        tint = PttHotRed,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "911 / RESCUE",
+                        color = PttHotRed,
+                        fontSize = 9.5.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "Coast Guard",
+                        color = TacticalTextMuted,
+                        fontSize = 8.5.sp
+                    )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Clean Quick Action Hub Row (Feature Menu, Noise Filter, Themes)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Feature Menu Button
+            Card(
+                modifier = Modifier
+                    .weight(1.2f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, accentColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                    .clickable { onOpenMenu() }
+                    .testTag("walkie_menu_quick_button"),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Menu,
+                        contentDescription = "Feature Menu",
+                        tint = accentColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "ALL FEATURES",
+                        color = accentColor,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            // Quick Noise Filter Toggle
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(
+                        1.dp,
+                        if (userIdentity.noiseFilterEnabled) PttNeonGreen.copy(alpha = 0.5f) else TacticalCardBorder,
+                        RoundedCornerShape(12.dp)
+                    )
+                    .clickable { onToggleNoiseCancellation() }
+                    .testTag("walkie_noise_quick_toggle"),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.GraphicEq,
+                        contentDescription = "Noise Filter",
+                        tint = if (userIdentity.noiseFilterEnabled) PttNeonGreen else TacticalTextMuted,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = if (userIdentity.noiseFilterEnabled) "FILTER ON" else "FILTER OFF",
+                        color = if (userIdentity.noiseFilterEnabled) PttNeonGreen else TacticalTextMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            // Quick Themes Button
+            Card(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, TacticalCardBorder, RoundedCornerShape(12.dp))
+                    .clickable { onOpenThemeSelector() }
+                    .testTag("walkie_themes_quick_button"),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = "Themes",
+                        tint = BurnerGold,
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(5.dp))
+                    Text(
+                        text = "THEMES",
+                        color = BurnerGold,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(20.dp))
     }
 }
 
@@ -888,6 +867,26 @@ private fun StealthMinimalistLayout(
 ) {
     val isTransmitting = pttState == PttState.TRANSMITTING
 
+    val stealthPulseTransition = rememberInfiniteTransition(label = "stealth_pulse")
+    val stealthMicScale by stealthPulseTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = if (isTransmitting) 1.25f else 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "stealth_mic_scale"
+    )
+    val stealthDotBlink by stealthPulseTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(300, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "stealth_dot_blink"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -945,16 +944,37 @@ private fun StealthMinimalistLayout(
                     imageVector = Icons.Default.Mic,
                     contentDescription = "PTT Mic",
                     tint = TacticalDarkBg,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier
+                        .size(36.dp)
+                        .scale(stealthMicScale)
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = if (isTransmitting) "TRANSMITTING HOT (RELEASE TO SEND)" else "HOLD ANYWHERE TO TRANSMIT",
-                    color = TacticalDarkBg,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 13.sp,
-                    fontFamily = FontFamily.Monospace
-                )
+                if (isTransmitting) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(TacticalDarkBg.copy(alpha = stealthDotBlink))
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "TRANSMITTING HOT (RECORDING)",
+                            color = TacticalDarkBg,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 13.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                } else {
+                    Text(
+                        text = "HOLD ANYWHERE TO TRANSMIT",
+                        color = TacticalDarkBg,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
             }
         }
     }

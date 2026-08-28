@@ -6,12 +6,15 @@ import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
-import android.media.MediaRecorder
+import android.media.MediaPlayer
 import android.media.ToneGenerator
+import android.net.Uri
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import com.example.data.model.NoaaWeatherStation
+import com.example.data.model.PublicScannerFeed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -49,6 +52,23 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
     private val _isPlayingIncoming = MutableStateFlow(false)
     val isPlayingIncoming: StateFlow<Boolean> = _isPlayingIncoming.asStateFlow()
 
+    // Live Scanner & NOAA Weather Stream states
+    private val _isScannerPlaying = MutableStateFlow(false)
+    val isScannerPlaying: StateFlow<Boolean> = _isScannerPlaying.asStateFlow()
+
+    private val _activeScannerId = MutableStateFlow<String?>(null)
+    val activeScannerId: StateFlow<String?> = _activeScannerId.asStateFlow()
+
+    private val _isNoaaPlaying = MutableStateFlow(false)
+    val isNoaaPlaying: StateFlow<Boolean> = _isNoaaPlaying.asStateFlow()
+
+    private val _activeNoaaId = MutableStateFlow<String?>(null)
+    val activeNoaaId: StateFlow<String?> = _activeNoaaId.asStateFlow()
+
+    private var mediaPlayer: MediaPlayer? = null
+    private var scannerSimulationJob: Job? = null
+    private var noaaSimulationJob: Job? = null
+
     private var audioRecord: AudioRecord? = null
     private var isRecordingMic = false
     private var recordingJob: Job? = null
@@ -62,7 +82,7 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
         animationJob?.cancel()
         animationJob = scope.launch(Dispatchers.Default) {
             while (isActive) {
-                if (!isRecordingMic && !_isPlayingIncoming.value) {
+                if (!isRecordingMic && !_isPlayingIncoming.value && !_isScannerPlaying.value && !_isNoaaPlaying.value) {
                     val idleBars = List(16) { index ->
                         0.08f + (0.05f * sin((System.currentTimeMillis() / 250.0) + index).toFloat()).coerceAtLeast(0f)
                     }
@@ -172,6 +192,188 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
         }
     }
 
+    // ==========================================
+    // BROADCASTIFY LIVE PUBLIC SAFETY SCANNER
+    // ==========================================
+
+    fun playLiveScanner(feed: PublicScannerFeed) {
+        stopNoaaWeatherRadio()
+        stopScanner()
+
+        _isScannerPlaying.value = true
+        _activeScannerId.value = feed.id
+        vibrateShort(30)
+
+        // Try streaming via Android MediaPlayer
+        try {
+            val player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+                setDataSource(context, Uri.parse(feed.streamUrl))
+                setOnPreparedListener { mp ->
+                    mp.start()
+                }
+                setOnErrorListener { _, _, _ ->
+                    // Fallback to synthesized scanner RF background audio
+                    startScannerSynthesizedAudio()
+                    true
+                }
+                prepareAsync()
+            }
+            mediaPlayer = player
+        } catch (e: Exception) {
+            startScannerSynthesizedAudio()
+        }
+
+        // Start scanner audio animation & occasional radio chatter squelch simulation
+        startScannerSynthesizedAudio()
+    }
+
+    private fun startScannerSynthesizedAudio() {
+        scannerSimulationJob?.cancel()
+        scannerSimulationJob = scope.launch(Dispatchers.Default) {
+            // Play initial trunked scanner beep
+            try {
+                generateTonePcm(listOf(850, 1050), 40)
+            } catch (e: Exception) {
+                // ignore
+            }
+
+            while (isActive && _isScannerPlaying.value) {
+                // Generate dynamic realistic scanner amplitude burst
+                val isBurst = Random.nextFloat() > 0.35f
+                val baseAmp = if (isBurst) Random.nextFloat() * 0.7f + 0.3f else 0.15f
+                _liveAudioAmplitude.value = baseAmp
+                _spectrumBars.value = List(16) { i ->
+                    val v = (baseAmp * (0.2f + 0.8f * sin((System.currentTimeMillis() / 150.0) + (i * 0.6)).toFloat())).coerceIn(0.1f, 1f)
+                    v
+                }
+                delay(60)
+
+                // Occasionally play realistic radio squelch tail
+                if (Random.nextInt(100) < 4) {
+                    playSquelchBurst()
+                }
+            }
+        }
+    }
+
+    fun stopScanner() {
+        _isScannerPlaying.value = false
+        _activeScannerId.value = null
+        scannerSimulationJob?.cancel()
+        scannerSimulationJob = null
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+            mediaPlayer = null
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
+    // ==========================================
+    // NATIONAL WEATHER SERVICE (NOAA) RADIO
+    // ==========================================
+
+    fun playNoaaWeatherRadio(station: NoaaWeatherStation) {
+        stopScanner()
+        stopNoaaWeatherRadio()
+
+        _isNoaaPlaying.value = true
+        _activeNoaaId.value = station.id
+        vibrateShort(30)
+
+        // Try streaming NOAA via MediaPlayer
+        try {
+            val player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+                setDataSource(context, Uri.parse(station.streamUrl))
+                setOnPreparedListener { mp ->
+                    mp.start()
+                }
+                setOnErrorListener { _, _, _ ->
+                    startNoaaSynthesizedBroadcast(station)
+                    true
+                }
+                prepareAsync()
+            }
+            mediaPlayer = player
+        } catch (e: Exception) {
+            startNoaaSynthesizedBroadcast(station)
+        }
+
+        startNoaaSynthesizedBroadcast(station)
+    }
+
+    private fun startNoaaSynthesizedBroadcast(station: NoaaWeatherStation) {
+        noaaSimulationJob?.cancel()
+        noaaSimulationJob = scope.launch(Dispatchers.Default) {
+            // Play NOAA automated carrier tone
+            try {
+                generateTonePcm(listOf(1050), 75)
+            } catch (e: Exception) {
+                // ignore
+            }
+
+            while (isActive && _isNoaaPlaying.value) {
+                val amp = 0.35f + (Random.nextFloat() * 0.45f)
+                _liveAudioAmplitude.value = amp
+                _spectrumBars.value = List(16) { i ->
+                    (amp * (0.4f + 0.6f * sin((System.currentTimeMillis() / 200.0) + (i * 0.4)).toFloat())).coerceIn(0.12f, 0.95f)
+                }
+                delay(70)
+            }
+        }
+    }
+
+    fun stopNoaaWeatherRadio() {
+        _isNoaaPlaying.value = false
+        _activeNoaaId.value = null
+        noaaSimulationJob?.cancel()
+        noaaSimulationJob = null
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+            mediaPlayer = null
+        } catch (e: Exception) {
+            // ignore
+        }
+    }
+
+    fun playNoaa1050HzAlertTone() {
+        vibrateShort(250)
+        scope.launch(Dispatchers.IO) {
+            try {
+                // 1050 Hz SAME Emergency Alert Siren (National Weather Service standard)
+                generateTonePcm(listOf(1050, 1050, 1050, 1050), 300)
+            } catch (e: Exception) {
+                toneGenerator?.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 1000)
+            }
+        }
+    }
+
+    fun playMaydayDistressSiren() {
+        vibrateShort(500)
+        scope.launch(Dispatchers.IO) {
+            try {
+                // International Maritime Mayday Dual-Tone Alarm (2200 Hz & 1300 Hz)
+                generateTonePcm(listOf(2200, 1300, 2200, 1300, 2200, 1300), 200)
+            } catch (e: Exception) {
+                toneGenerator?.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 1200)
+            }
+        }
+    }
+
     fun playProfilePressSound(profile: com.example.data.model.PttSoundProfile) {
         try {
             generateTonePcm(profile.pressFrequencies, profile.pressDurationMs)
@@ -197,6 +399,26 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
                 playProfileReleaseSound(profile)
             }
         }
+    }
+
+    fun playChirpPress(profile: com.example.data.model.PttSoundProfile? = null) {
+        if (profile != null) {
+            playProfilePressSound(profile)
+        } else {
+            playNextelOpenChirp()
+        }
+    }
+
+    fun playChirpRelease(profile: com.example.data.model.PttSoundProfile? = null) {
+        if (profile != null) {
+            playProfileReleaseSound(profile)
+        } else {
+            playRogerBeep()
+        }
+    }
+
+    fun playTransmissionNoiseBurst() {
+        playSquelchBurst()
     }
 
     fun playNextelOpenChirp() {
@@ -298,6 +520,8 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
     }
 
     fun release() {
+        stopScanner()
+        stopNoaaWeatherRadio()
         toneGenerator?.release()
         toneGenerator = null
         animationJob?.cancel()

@@ -420,7 +420,76 @@ data class Channel(
     val isEncrypted: Boolean = true,
     val safetyFingerprint: String = "MIL-256-AES-GCM",
     val safetyKeyBlocks: String = "73910 82941 02948 48192 19284 72910 92847 10293 84719 84019 28401 20491",
-    val isSystemChannel: Boolean = true
+    val isSystemChannel: Boolean = true,
+    val isEmergency: Boolean = false,
+    val channelCategory: String = "General"
+)
+
+enum class ScannerCategory(val title: String, val badgeIcon: String) {
+    POLICE("Police & Sheriff", "🚓"),
+    FIRE_RESCUE("Fire & Rescue", "🚒"),
+    EMS_MEDICAL("EMS & Paramedics", "🚑"),
+    MARINE_COAST_GUARD("Marine & Coast Guard", "⚓"),
+    AVIATION_TOWER("Airport Tower & Air", "✈️"),
+    ALL_HAZARDS("Public Safety Multi-Agency", "🚨")
+}
+
+data class PublicScannerFeed(
+    val id: String,
+    val name: String,
+    val agency: String,
+    val location: String,
+    val stateCode: String,
+    val category: ScannerCategory,
+    val frequency: String,
+    val activeListeners: Int,
+    val streamUrl: String,
+    val description: String,
+    val tag: String,
+    val isLive: Boolean = true
+)
+
+enum class WeatherAlertLevel(val label: String, val colorHex: Long) {
+    NORMAL("NO SEVERE ALERTS", 0xFF10B981),
+    ADVISORY("SPECIAL WEATHER ADVISORY", 0xFFF59E0B),
+    WATCH("SEVERE THUNDERSTORM WATCH", 0xFFF97316),
+    WARNING("TORNADO / FLASH FLOOD WARNING", 0xFFEF4444)
+}
+
+data class NoaaWeatherStation(
+    val id: String,
+    val callsign: String,
+    val locationName: String,
+    val state: String,
+    val frequencyMhz: String,
+    val streamUrl: String,
+    val currentTempF: Int,
+    val condition: String,
+    val humidityPct: Int,
+    val windMph: Int,
+    val windDir: String,
+    val baroInHg: Double,
+    val alertLevel: WeatherAlertLevel,
+    val activeAlertText: String
+)
+
+enum class DistressType(val title: String, val iconEmoji: String, val code: String) {
+    LIFE_THREATENING_MEDICAL("Medical Emergency / Trauma", "🚨", "MED-01"),
+    FIRE_EVACUATION("Structure / Wildfire Evac", "🔥", "FIRE-02"),
+    MARINE_MAYDAY("Vessel Sinking / Maritime Mayday", "⛵", "MAYDAY-USCG"),
+    SEARCH_AND_RESCUE("Lost Person / Wilderness SAR", "🌲", "SAR-04"),
+    CRIME_IN_PROGRESS("Active Threat / Hostile Crime", "⚠️", "CRIME-05")
+}
+
+data class EmergencyAgency(
+    val id: String,
+    val name: String,
+    val description: String,
+    val phoneNumber: String,
+    val dialActionUrl: String,
+    val is24x7: Boolean = true,
+    val badge: String,
+    val iconType: String // "911", "COAST_GUARD", "CRISIS_988", "POISON", "SAR"
 )
 
 @Entity(tableName = "transmissions")
@@ -439,4 +508,403 @@ data class Transmission(
     val audioEffect: String = "CRYSTAL_CLEAR"
 )
 
+enum class AppMode {
+    TACTICAL,
+    WORLDWIDE
+}
 
+@Entity(tableName = "user_profiles")
+data class UserProfile(
+    @PrimaryKey val id: Int = 1,
+    val displayName: String = "Alex Vance",
+    val callsign: String = "VIPER-7",
+    val country: String = "United States",
+    val countryCode: String = "US",
+    val countryFlag: String = "🇺🇸",
+    val city: String = "New York",
+    val bio: String = "Global radio enthusiast & audio hacker. Always down to talk tech and travel!",
+    val spokenLanguages: String = "English, Spanish",
+    val avatarIcon: String = "radio_operator",
+    val coinsBalance: Int = 350,
+    val totalGiftsReceived: Int = 12,
+    val totalGiftsSent: Int = 8,
+    val reputationLevel: Int = 5,
+    val badges: String = "GLOBETROTTER,EARLY_ADOPTER,VIP_SUPPORTER"
+)
+
+@Entity(tableName = "worldwide_rooms")
+data class WorldwideRoom(
+    @PrimaryKey val id: String,
+    val name: String,
+    val country: String,
+    val countryCode: String,
+    val countryFlag: String,
+    val city: String,
+    val region: String, // "Americas", "Europe", "Asia-Pacific", "Middle East", "Africa"
+    val category: String, // "General", "Language Exchange", "Music & Jam", "Travel & Meet", "Night Owls", "Tech & Gaming"
+    val activeListeners: Int,
+    val activeSpeakersCount: Int,
+    val language: String,
+    val description: String,
+    val isOfficial: Boolean = true,
+    val isLive: Boolean = true,
+    val tags: String = "VOICE,LIVE,GLOBAL",
+    val createdAt: Long = System.currentTimeMillis()
+) {
+    val listenersCount: Int get() = activeListeners
+}
+
+data class WorldwideSpeaker(
+    val id: String,
+    val username: String,
+    val callsign: String,
+    val country: String,
+    val countryFlag: String,
+    val city: String,
+    val bio: String,
+    val isSpeaking: Boolean = false,
+    val isHost: Boolean = false,
+    val reputationScore: Int = 100,
+    val badges: String = "ACTIVE_SPEAKER",
+    val receivedGiftsCount: Int = 5
+)
+
+@Entity(tableName = "friends")
+data class FriendUser(
+    @PrimaryKey val id: String,
+    val username: String,
+    val callsign: String,
+    val country: String,
+    val countryFlag: String,
+    val city: String,
+    val bio: String = "",
+    val isOnline: Boolean = true,
+    val statusText: String = "Listening in Tokyo Lounge",
+    val avatarIcon: String = "user_default",
+    val mutualFriendsCount: Int = 2,
+    val addedAt: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "blocked_users")
+data class BlockedUser(
+    @PrimaryKey val id: String,
+    val username: String,
+    val callsign: String,
+    val country: String,
+    val countryFlag: String,
+    val reason: String = "User requested block",
+    val blockedAt: Long = System.currentTimeMillis()
+)
+
+data class PaidGiftItem(
+    val id: String,
+    val name: String,
+    val coinsCost: Int,
+    val priceUsd: Double,
+    val priceDisplay: String,
+    val emoji: String,
+    val badgeLabel: String,
+    val description: String,
+    val soundEffect: String
+)
+
+@Entity(tableName = "gift_transactions")
+data class GiftTransaction(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val giftId: String,
+    val giftName: String,
+    val giftEmoji: String,
+    val coinsSpent: Int,
+    val senderUsername: String,
+    val recipientId: String,
+    val recipientUsername: String,
+    val roomName: String,
+    val message: String = "",
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+@Entity(tableName = "room_messages")
+data class LiveRoomMessage(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val roomId: String,
+    val senderId: String,
+    val senderUsername: String,
+    val senderCallsign: String,
+    val senderCountryFlag: String,
+    val senderCity: String,
+    val text: String,
+    val isGiftNotification: Boolean = false,
+    val giftEmoji: String = "",
+    val isVoiceSnippet: Boolean = false,
+    val voiceDurationSeconds: Float = 0f,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+object WorldwideGiftCatalog {
+    val GIFTS = listOf(
+        PaidGiftItem(
+            id = "gift_coffee",
+            name = "Warm Coffee",
+            coinsCost = 50,
+            priceUsd = 0.99,
+            priceDisplay = "$0.99 (50 Coins)",
+            emoji = "☕",
+            badgeLabel = "CHEERS",
+            description = "Send a warm cup of coffee to the current speaker",
+            soundEffect = "COFFEE_CHIME"
+        ),
+        PaidGiftItem(
+            id = "gift_rocket",
+            name = "Space Rocket",
+            coinsCost = 100,
+            priceUsd = 1.99,
+            priceDisplay = "$1.99 (100 Coins)",
+            emoji = "🚀",
+            badgeLabel = "BOOST",
+            description = "Boost the speaker's voice with a rocket launch visual",
+            soundEffect = "ROCKET_BOOST"
+        ),
+        PaidGiftItem(
+            id = "gift_walkie",
+            name = "Gold Walkie-Talkie",
+            coinsCost = 150,
+            priceUsd = 2.99,
+            priceDisplay = "$2.99 (150 Coins)",
+            emoji = "📻",
+            badgeLabel = "TACTICAL",
+            description = "Award a 24-Karat Golden Radio Trophy",
+            soundEffect = "GOLD_CHIRP"
+        ),
+        PaidGiftItem(
+            id = "gift_crown",
+            name = "Royal Diamond Crown",
+            coinsCost = 250,
+            priceUsd = 4.99,
+            priceDisplay = "$4.99 (250 Coins)",
+            emoji = "👑",
+            badgeLabel = "VIP ROYAL",
+            description = "Crown the room host with glittering room-wide banners",
+            soundEffect = "ROYAL_FANFARE"
+        ),
+        PaidGiftItem(
+            id = "gift_satellite",
+            name = "Orbital Radio Satellite",
+            coinsCost = 500,
+            priceUsd = 9.99,
+            priceDisplay = "$9.99 (500 Coins)",
+            emoji = "📡",
+            badgeLabel = "ORBITAL",
+            description = "Deploy an orbital satellite broadcast effect across the entire room",
+            soundEffect = "SATELLITE_SWEEP"
+        ),
+        PaidGiftItem(
+            id = "gift_diamond",
+            name = "Super Galaxy Diamond",
+            coinsCost = 1000,
+            priceUsd = 19.99,
+            priceDisplay = "$19.99 (1000 Coins)",
+            emoji = "💎",
+            badgeLabel = "LEGENDARY",
+            description = "Ultimate legendary gift with full-screen fireworks and audio fanfare",
+            soundEffect = "DIAMOND_EXPLOSION"
+        )
+    )
+}
+
+enum class CashoutMethod(
+    val title: String,
+    val badge: String,
+    val feeDescription: String,
+    val placeholder: String,
+    val speed: String,
+    val minCoins: Int = 100
+) {
+    PAYPAL(
+        title = "PayPal Direct Transfer",
+        badge = "INSTANT",
+        feeDescription = "0% Platform Fee",
+        placeholder = "Enter PayPal email address (e.g. user@gmail.com)",
+        speed = "Instant (~60s)",
+        minCoins = 100
+    ),
+    BANK_TRANSFER(
+        title = "Direct Bank Wire / ACH",
+        badge = "1-2 DAYS",
+        feeDescription = "$0.00 Free ACH / Wire",
+        placeholder = "Enter Account # & Routing # or IBAN",
+        speed = "1 - 2 Business Days",
+        minCoins = 200
+    ),
+    CRYPTO_USDT(
+        title = "USDT / USDC Crypto (TRC-20 / SOL)",
+        badge = "BLOCKCHAIN",
+        feeDescription = "Network gas covered by InstaWire",
+        placeholder = "Enter USDT (TRC-20) or Solana wallet address",
+        speed = "5 - 10 Minutes",
+        minCoins = 100
+    ),
+    CASH_APP(
+        title = "Cash App Direct Payout",
+        badge = "INSTANT",
+        feeDescription = "Instant 0% Fee",
+        placeholder = "Enter \$Cashtag (e.g. \$AlexVance)",
+        speed = "Instant (~30s)",
+        minCoins = 100
+    ),
+    STRIPE_DEBIT(
+        title = "Visa / Mastercard Debit Payout",
+        badge = "CARD DIRECT",
+        feeDescription = "Instant card network payout",
+        placeholder = "Enter Debit card number or linked billing email",
+        speed = "Under 30 Minutes",
+        minCoins = 150
+    )
+}
+
+@Entity(tableName = "coin_cashouts")
+data class CoinCashoutTransaction(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val coinsAmount: Int,
+    val usdAmount: Double,
+    val method: String,
+    val destinationAccount: String,
+    val accountHolderName: String,
+    val status: String = "COMPLETED", // "COMPLETED", "PROCESSING"
+    val referenceId: String,
+    val feeUsd: Double = 0.0,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+enum class CoinStoreCategory(val title: String) {
+    VIP_SUBSCRIPTION("VIP & Subscriptions"),
+    CUSTOMIZATION("Themes & Layouts"),
+    BURNER_NUMBERS("Burner Phone Lines"),
+    AUDIO_SFX("PTT Soundboard & Beeps"),
+    TACTICAL_TOOLS("Military DSP & Badges")
+}
+
+data class CoinInAppItem(
+    val id: String,
+    val title: String,
+    val subtitle: String,
+    val description: String,
+    val coinCost: Int,
+    val usdValueDisplay: String,
+    val category: CoinStoreCategory,
+    val emoji: String,
+    val badge: String,
+    val isFeatured: Boolean = false
+)
+
+object CoinInAppCatalog {
+    val ITEMS = listOf(
+        CoinInAppItem(
+            id = "coin_item_pro_month",
+            title = "Tactical Pro (1 Month VIP)",
+            subtitle = "Full AI Studio DSP & 1 Burner Line",
+            description = "Unlock 60s max transmission, AI noise cancellation, cloud burner line and priority queue.",
+            coinCost = 199,
+            usdValueDisplay = "$1.99 value",
+            category = CoinStoreCategory.VIP_SUBSCRIPTION,
+            emoji = "⚡",
+            badge = "POPULAR",
+            isFeatured = true
+        ),
+        CoinInAppItem(
+            id = "coin_item_black_ops_month",
+            title = "Black Ops Elite (1 Month VIP)",
+            subtitle = "5 Burner Lines & Priority Mesh",
+            description = "Unlock 180s transmission, 5 disposable burner numbers, VHF Bandpass DSP and priority mesh sync.",
+            coinCost = 499,
+            usdValueDisplay = "$4.99 value",
+            category = CoinStoreCategory.VIP_SUBSCRIPTION,
+            emoji = "🎖️",
+            badge = "BEST VALUE",
+            isFeatured = true
+        ),
+        CoinInAppItem(
+            id = "coin_item_ghost_sentinel",
+            title = "Ghost Sentinel (1 Month VIP)",
+            subtitle = "Unlimited Burners & Quantum Tunnel",
+            description = "Ultimate military clearance: unlimited burner lines, post-quantum crypto and zero transmission time limits.",
+            coinCost = 999,
+            usdValueDisplay = "$9.99 value",
+            category = CoinStoreCategory.VIP_SUBSCRIPTION,
+            emoji = "👑",
+            badge = "ULTIMATE",
+            isFeatured = true
+        ),
+        CoinInAppItem(
+            id = "coin_item_master_theme_pack",
+            title = "Master Themes & Layouts Pack",
+            subtitle = "Unlock All 10 Themes & 5 Chassis",
+            description = "Lifetime unlock for Cyberpunk Matrix, Retro CB Radio, Mil-Spec Cockpit HUD, Violet Eclipse and all color schemes.",
+            coinCost = 594,
+            usdValueDisplay = "$5.94 value",
+            category = CoinStoreCategory.CUSTOMIZATION,
+            emoji = "🎨",
+            badge = "LIFETIME",
+            isFeatured = true
+        ),
+        CoinInAppItem(
+            id = "coin_item_soundboard_pack",
+            title = "Tactical PTT Soundboard Pack",
+            subtitle = "All 7 Pro Chirps & Roger Beeps",
+            description = "Unlock Police Scanner, Mil-Spec Combat Beeper, Submarine Sonar Ping and retro squelch packs.",
+            coinCost = 299,
+            usdValueDisplay = "$2.99 value",
+            category = CoinStoreCategory.AUDIO_SFX,
+            emoji = "🔊",
+            badge = "PRO SOUND",
+            isFeatured = false
+        ),
+        CoinInAppItem(
+            id = "coin_item_extra_burners",
+            title = "3 Extra Cloud Burner Lines",
+            subtitle = "Disposable Anonymized Numbers",
+            description = "Instantly provisions 3 extra US/UK/International caller-ID masked burner phone numbers.",
+            coinCost = 299,
+            usdValueDisplay = "$2.99 value",
+            category = CoinStoreCategory.BURNER_NUMBERS,
+            emoji = "🔥",
+            badge = "ANONYMOUS",
+            isFeatured = false
+        ),
+        CoinInAppItem(
+            id = "coin_item_dsp_extreme_filter",
+            title = "Extreme Wind & Noise DSP Engine",
+            subtitle = "-38dB Deep Voice Isolation",
+            description = "Studio acoustic isolation algorithms for crystal clear voice transmissions in helicopters or extreme storms.",
+            coinCost = 150,
+            usdValueDisplay = "$1.50 value",
+            category = CoinStoreCategory.TACTICAL_TOOLS,
+            emoji = "🎙️",
+            badge = "DSP ISOLATION",
+            isFeatured = false
+        ),
+        CoinInAppItem(
+            id = "coin_item_verified_gold_badge",
+            title = "Gold Verified Radio Operator Badge",
+            subtitle = "Worldwide Stage Verification ✨",
+            description = "Showcases a gleaming golden operator badge next to your callsign in all worldwide rooms.",
+            coinCost = 250,
+            usdValueDisplay = "$2.50 value",
+            category = CoinStoreCategory.TACTICAL_TOOLS,
+            emoji = "⭐",
+            badge = "GLOBAL BADGE",
+            isFeatured = false
+        ),
+        CoinInAppItem(
+            id = "coin_item_stage_megaphone",
+            title = "Worldwide Stage Megaphone Boost",
+            subtitle = "Room-Wide Broadcast Priority",
+            description = "Grants 1 hour of top-stage speaking highlight and increased listener audio clarity in any worldwide room.",
+            coinCost = 100,
+            usdValueDisplay = "$1.00 value",
+            category = CoinStoreCategory.TACTICAL_TOOLS,
+            emoji = "📢",
+            badge = "BOOST",
+            isFeatured = false
+        )
+    )
+}

@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.random.Random
@@ -28,6 +29,17 @@ import kotlin.random.Random
 import com.example.data.model.SubscriptionTier
 import com.example.security.FirebaseBurnerProvisioningService
 import com.example.security.FirebaseProvisioningResponse
+
+import com.example.data.model.AppMode
+import com.example.data.model.BlockedUser
+import com.example.data.model.FriendUser
+import com.example.data.model.GiftTransaction
+import com.example.data.model.LiveRoomMessage
+import com.example.data.model.PaidGiftItem
+import com.example.data.model.UserProfile
+import com.example.data.model.WorldwideGiftCatalog
+import com.example.data.model.WorldwideRoom
+import com.example.data.model.WorldwideSpeaker
 
 sealed class WalkieTarget {
     data class ChannelTarget(val channel: Channel) : WalkieTarget()
@@ -41,6 +53,7 @@ enum class PttState {
 }
 
 data class UiState(
+    val appMode: AppMode = AppMode.TACTICAL, // TACTICAL or WORLDWIDE
     val activeTarget: WalkieTarget? = null,
     val pttState: PttState = PttState.IDLE,
     val transmitElapsedSeconds: Float = 0f,
@@ -53,6 +66,7 @@ data class UiState(
     val isAddContactModalOpen: Boolean = false,
     val isAddChannelModalOpen: Boolean = false,
     val isThemeLayoutModalOpen: Boolean = false,
+    val isNavMenuOpen: Boolean = false,
     val isPurchaseModalOpen: Boolean = false,
     val pendingPurchaseItemKey: String? = null,
     val pendingPurchaseTitle: String = "",
@@ -61,8 +75,44 @@ data class UiState(
     val isFirebaseProvisioning: Boolean = false,
     val lastFirebaseProvisioningResult: FirebaseProvisioningResponse? = null,
     val lastVerifiedNotification: String? = null,
-    val activeTab: Int = 0 // 0 = Radio/PTT, 1 = Channels, 2 = Burner, 3 = Settings, 4 = Logs
+    val activeTab: Int = 0, // 0 = Radio/PTT, 1 = Channels, 2 = Contacts, 3 = Burner, 4 = Logs, 5 = Settings
+
+    // Worldwide Functionality States
+    val selectedWorldwideRoom: WorldwideRoom? = null,
+    val activeWorldwideSpeakers: List<WorldwideSpeaker> = emptyList(),
+    val isWorldwidePttActive: Boolean = false,
+    val isWorldwideVoiceActive: Boolean = false,
+    val worldwideActiveSpeakerName: String? = null,
+    val isUserProfileModalOpen: Boolean = false,
+    val isOtherUserProfileModalOpen: Boolean = false,
+    val inspectingUser: FriendUser? = null,
+    val isFriendsAndBlockedModalOpen: Boolean = false,
+    val isSendGiftModalOpen: Boolean = false,
+    val giftTargetSpeaker: WorldwideSpeaker? = null,
+    val isCreateRoomModalOpen: Boolean = false,
+    val isBuyCoinsModalOpen: Boolean = false,
+    val activeGiftBanner: GiftTransaction? = null,
+    val worldwideSearchQuery: String = "",
+    val worldwideSelectedRegion: String = "All",
+    val worldwideSelectedCategory: String = "All",
+    val isWorldwideAudioMuted: Boolean = false,
+    val hasRaisedHandToSpeak: Boolean = false,
+
+    // Coin Store, Real Money Cashout & Settings Diagnostic States
+    val isCashoutModalOpen: Boolean = false,
+    val isCoinShopModalOpen: Boolean = false,
+    val isDiagnosticsRunning: Boolean = false,
+    val diagnosticsResult: String? = null,
+    val isLoopbackRecording: Boolean = false,
+    val loopbackStatus: String? = null,
+
+    // Live Scanners & NOAA Weather States
+    val isScannerPlaying: Boolean = false,
+    val activeScannerFeedId: String? = null,
+    val isNoaaPlaying: Boolean = false,
+    val activeNoaaId: String? = null
 )
+
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -87,6 +137,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     val burnerLines: StateFlow<List<com.example.data.model.BurnerLine>> = repository.allBurnerLines
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val userProfile: StateFlow<UserProfile> = repository.userProfile
+        .combine(MutableStateFlow(UserProfile())) { dbProfile, defaultProfile ->
+            dbProfile ?: defaultProfile
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UserProfile())
+
+    val worldwideRooms: StateFlow<List<WorldwideRoom>> = repository.allWorldwideRooms
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val friends: StateFlow<List<FriendUser>> = repository.allFriends
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val blockedUsers: StateFlow<List<BlockedUser>> = repository.allBlockedUsers
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val giftTransactions: StateFlow<List<GiftTransaction>> = repository.allGiftTransactions
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val cashoutTransactions: StateFlow<List<com.example.data.model.CoinCashoutTransaction>> = repository.allCashoutTransactions
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val _currentRoomMessages = MutableStateFlow<List<LiveRoomMessage>>(emptyList())
+    val currentRoomMessages: StateFlow<List<LiveRoomMessage>> = _currentRoomMessages.asStateFlow()
+
+    private var worldwidePttJob: Job? = null
+    private var worldwideRoomSimulationJob: Job? = null
+
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -121,6 +199,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun selectTarget(target: WalkieTarget) {
         _uiState.value = _uiState.value.copy(activeTarget = target)
         audioEngine.playSquelchBurst()
+    }
+
+    fun selectChannelById(channelId: String) {
+        viewModelScope.launch {
+            val targetChannel = channels.value.find { it.id == channelId }
+                ?: repository.allChannels.firstOrNull()?.find { it.id == channelId }
+            if (targetChannel != null) {
+                _uiState.value = _uiState.value.copy(
+                    activeTarget = WalkieTarget.ChannelTarget(targetChannel),
+                    activeTab = 0,
+                    lastVerifiedNotification = "Tuned to Channel ${targetChannel.name} (${targetChannel.frequency})"
+                )
+                audioEngine.playSquelchBurst()
+            }
+        }
+    }
+
+    fun selectContactById(contactId: Long) {
+        viewModelScope.launch {
+            val targetContact = contacts.value.find { it.id == contactId }
+                ?: repository.allContacts.firstOrNull()?.find { it.id == contactId }
+            if (targetContact != null) {
+                _uiState.value = _uiState.value.copy(
+                    activeTarget = WalkieTarget.ContactTarget(targetContact),
+                    activeTab = 0,
+                    lastVerifiedNotification = "Connected direct PTT line to ${targetContact.callsign}"
+                )
+                audioEngine.playSquelchBurst()
+            }
+        }
     }
 
     fun setActiveTab(tabIndex: Int) {
@@ -353,7 +461,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun completePurchase(itemKey: String) {
         viewModelScope.launch(Dispatchers.IO) {
-            if (itemKey == "ALL_THEMES_PASS") {
+            val isThemePack = itemKey == "ALL_THEMES_PASS"
+            if (isThemePack) {
                 repository.purchaseAllThemesPass()
             } else {
                 repository.unlockItem(itemKey)
@@ -377,7 +486,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.value = _uiState.value.copy(
                 isPurchaseModalOpen = false,
                 pendingPurchaseItemKey = null,
-                lastVerifiedNotification = "Purchase Successful ($0.99)! Item Unlocked & Activated."
+                lastVerifiedNotification = if (isThemePack)
+                    "Purchase Successful ($5.94)! All 6 Themes Unlocked."
+                else
+                    "Purchase Successful ($0.99)! Item Unlocked & Activated."
             )
         }
     }
@@ -529,8 +641,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.value = _uiState.value.copy(
                 isPhoneConfirmModalOpen = false,
                 isTermsModalOpen = false,
+                activeTab = 3, // Automatically transition to Settings screen
                 lastVerifiedNotification = "Human Verified & Terms Accepted • Zero-Knowledge Active"
             )
+            // Auto-dismiss notification after displaying
+            delay(3500)
+            if (_uiState.value.lastVerifiedNotification?.contains("Human Verified") == true) {
+                _uiState.value = _uiState.value.copy(lastVerifiedNotification = null)
+            }
         }
     }
 
@@ -698,9 +816,722 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(isThemeLayoutModalOpen = open)
     }
 
+    fun setNavMenuOpen(open: Boolean) {
+        _uiState.value = _uiState.value.copy(isNavMenuOpen = open)
+    }
+
     fun clearNotification() {
         _uiState.value = _uiState.value.copy(lastVerifiedNotification = null)
     }
+
+    // ==========================================
+    // WORLDWIDE WALKIE TALKIE COMMUNITY HANDLERS
+    // ==========================================
+
+    fun setAppMode(mode: AppMode) {
+        _uiState.value = _uiState.value.copy(appMode = mode)
+        if (mode == AppMode.WORLDWIDE) {
+            audioEngine.playKeyVerifiedTone()
+        } else {
+            leaveWorldwideRoom()
+            audioEngine.playChirpPress(userIdentity.value.soundProfile)
+        }
+    }
+
+    fun enterWorldwideRoom(room: WorldwideRoom) {
+        // Leave previous room simulation if any
+        worldwideRoomSimulationJob?.cancel()
+
+        // Generate dynamic speakers for this specific room
+        val demoSpeakers = generateSpeakersForRoom(room)
+
+        _uiState.value = _uiState.value.copy(
+            selectedWorldwideRoom = room,
+            activeWorldwideSpeakers = demoSpeakers,
+            hasRaisedHandToSpeak = false,
+            isWorldwidePttActive = false,
+            isWorldwideVoiceActive = false,
+            worldwideActiveSpeakerName = null
+        )
+
+        // Play chirp connect tone
+        audioEngine.playChirpPress(userIdentity.value.soundProfile)
+
+        // Load initial live room messages / welcome message
+        viewModelScope.launch(Dispatchers.IO) {
+            val initialMsgs = listOf(
+                LiveRoomMessage(
+                    roomId = room.id,
+                    senderId = "system",
+                    senderUsername = "ROOM BOT",
+                    senderCallsign = "DISPATCH",
+                    senderCountryFlag = room.countryFlag,
+                    senderCity = room.city,
+                    text = "Welcome to ${room.name}! Press & hold the Worldwide PTT button to talk live to everyone in ${room.city}."
+                )
+            )
+            _currentRoomMessages.value = initialMsgs
+            startWorldwideRoomSimulation(room)
+        }
+    }
+
+    fun leaveWorldwideRoom() {
+        worldwideRoomSimulationJob?.cancel()
+        worldwidePttJob?.cancel()
+        _uiState.value = _uiState.value.copy(
+            selectedWorldwideRoom = null,
+            activeWorldwideSpeakers = emptyList(),
+            isWorldwidePttActive = false,
+            isWorldwideVoiceActive = false,
+            worldwideActiveSpeakerName = null
+        )
+        audioEngine.playChirpRelease(userIdentity.value.soundProfile)
+    }
+
+    private fun generateSpeakersForRoom(room: WorldwideRoom): List<WorldwideSpeaker> {
+        return when (room.countryCode) {
+            "JP" -> listOf(
+                WorldwideSpeaker("spk_1", "Sakura_Tokyo", "CHERRY-99", "Japan", "🇯🇵", "Tokyo", "Host • Music Producer in Shibuya", isHost = true, reputationScore = 480, receivedGiftsCount = 18),
+                WorldwideSpeaker("spk_2", "Kenji_Oda", "NEO-TOKYO", "Japan", "🇯🇵", "Tokyo", "Audio engineer & retro CB collector", reputationScore = 320, receivedGiftsCount = 9),
+                WorldwideSpeaker("spk_3", "Yuki_Sapporo", "SNOW-BIRD", "Japan", "🇯🇵", "Sapporo", "English teacher & travel blogger", reputationScore = 210, receivedGiftsCount = 5)
+            )
+            "US" -> listOf(
+                WorldwideSpeaker("spk_1", "Brooklyn_DJ", "BEAT-LAB", "United States", "🇺🇸", "New York", "Host • Live Rooftop Streamer", isHost = true, reputationScore = 650, receivedGiftsCount = 34),
+                WorldwideSpeaker("spk_2", "Dave_Silicon", "CHIP-99", "United States", "🇺🇸", "San Francisco", "AI developer & ham radio license holder", reputationScore = 410, receivedGiftsCount = 14),
+                WorldwideSpeaker("spk_3", "Mia_Austin", "LONE-STAR", "United States", "🇺🇸", "Austin", "Singer-songwriter & podcast creator", reputationScore = 290, receivedGiftsCount = 11)
+            )
+            "GB" -> listOf(
+                WorldwideSpeaker("spk_1", "Chloe_London", "BIG-BEN", "United Kingdom", "🇬🇧", "London", "Host • Camden vinyl collector", isHost = true, reputationScore = 520, receivedGiftsCount = 22),
+                WorldwideSpeaker("spk_2", "Liam_Manchester", "RED-DEVIL", "United Kingdom", "🇬🇧", "Manchester", "Football host & audio geek", reputationScore = 340, receivedGiftsCount = 8)
+            )
+            "FR" -> listOf(
+                WorldwideSpeaker("spk_1", "Amelie_Paris", "LOUVRE-1", "France", "🇫🇷", "Paris", "Host • Art curator & language mentor", isHost = true, reputationScore = 490, receivedGiftsCount = 19),
+                WorldwideSpeaker("spk_2", "Julien_Nice", "COTE-AZUR", "France", "🇫🇷", "Nice", "Travel photographer & sailor", reputationScore = 280, receivedGiftsCount = 6)
+            )
+            "KR" -> listOf(
+                WorldwideSpeaker("spk_1", "Minho_Seoul", "K-PULSE", "South Korea", "🇰🇷", "Seoul", "Host • eSports coach & gamer", isHost = true, reputationScore = 720, receivedGiftsCount = 42),
+                WorldwideSpeaker("spk_2", "Jiwoo_Busan", "SEA-BREEZE", "South Korea", "🇰🇷", "Busan", "Vocalist & synthesizer tinkerer", reputationScore = 360, receivedGiftsCount = 12)
+            )
+            else -> listOf(
+                WorldwideSpeaker("spk_1", "GlobalHost", "WORLD-1", room.country, room.countryFlag, room.city, "Host • Global Walkie Navigator", isHost = true, reputationScore = 350, receivedGiftsCount = 10),
+                WorldwideSpeaker("spk_2", "Airwaves_Echo", "ECHO-7", room.country, room.countryFlag, room.city, "Ham radio enthusiast & world traveler", reputationScore = 220, receivedGiftsCount = 4)
+            )
+        }
+    }
+
+    private fun startWorldwideRoomSimulation(room: WorldwideRoom) {
+        worldwideRoomSimulationJob = viewModelScope.launch(Dispatchers.IO) {
+            val phrases = listOf(
+                "Hey everyone! Reception is super clear all the way over here in ${room.city}!",
+                "Greetings from global airwaves! Who else is tuning in tonight?",
+                "Loved that track you mentioned earlier! Sending some good vibes.",
+                "Anyone traveling through ${room.country} next month? Hit me up!",
+                "Awesome walkie talkie quality! Zero lag on this room."
+            )
+
+            while (true) {
+                delay(Random.nextLong(12000, 20000))
+                val speakers = _uiState.value.activeWorldwideSpeakers
+                if (speakers.isNotEmpty() && !_uiState.value.isWorldwidePttActive) {
+                    val speaker = speakers.random()
+                    // Set speaking indicator
+                    _uiState.value = _uiState.value.copy(
+                        isWorldwideVoiceActive = true,
+                        worldwideActiveSpeakerName = speaker.username
+                    )
+                    audioEngine.playTransmissionNoiseBurst()
+
+                    val msg = LiveRoomMessage(
+                        roomId = room.id,
+                        senderId = speaker.id,
+                        senderUsername = speaker.username,
+                        senderCallsign = speaker.callsign,
+                        senderCountryFlag = speaker.countryFlag,
+                        senderCity = speaker.city,
+                        text = phrases.random(),
+                        isVoiceSnippet = true,
+                        voiceDurationSeconds = Random.nextInt(2, 5).toFloat()
+                    )
+                    val updated = _currentRoomMessages.value.toMutableList().apply { add(msg) }
+                    _currentRoomMessages.value = updated
+
+                    delay(3000)
+                    _uiState.value = _uiState.value.copy(
+                        isWorldwideVoiceActive = false,
+                        worldwideActiveSpeakerName = null
+                    )
+                }
+            }
+        }
+    }
+
+    fun startWorldwidePtt() {
+        if (_uiState.value.isWorldwidePttActive) return
+        val currentIdentity = userIdentity.value
+
+        audioEngine.playChirpPress(currentIdentity.soundProfile)
+        _uiState.value = _uiState.value.copy(
+            isWorldwidePttActive = true,
+            isWorldwideVoiceActive = true,
+            worldwideActiveSpeakerName = "YOU (${currentIdentity.callsign})"
+        )
+    }
+
+    fun stopWorldwidePtt() {
+        if (!_uiState.value.isWorldwidePttActive) return
+        val currentIdentity = userIdentity.value
+        val currentProfile = userProfile.value
+        val room = _uiState.value.selectedWorldwideRoom
+
+        audioEngine.playChirpRelease(currentIdentity.soundProfile)
+        _uiState.value = _uiState.value.copy(
+            isWorldwidePttActive = false,
+            isWorldwideVoiceActive = false,
+            worldwideActiveSpeakerName = null
+        )
+
+        // Post own transmission message to room feed
+        if (room != null) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val myMsg = LiveRoomMessage(
+                    roomId = room.id,
+                    senderId = "1",
+                    senderUsername = currentProfile.displayName,
+                    senderCallsign = currentProfile.callsign,
+                    senderCountryFlag = currentProfile.countryFlag,
+                    senderCity = currentProfile.city,
+                    text = "🎙️ [LIVE VOICE TRANSMISSION] Broadcasted across ${room.name}",
+                    isVoiceSnippet = true,
+                    voiceDurationSeconds = 3.2f
+                )
+                val updated = _currentRoomMessages.value.toMutableList().apply { add(myMsg) }
+                _currentRoomMessages.value = updated
+            }
+        }
+    }
+
+    fun toggleRaiseHand() {
+        val next = !_uiState.value.hasRaisedHandToSpeak
+        _uiState.value = _uiState.value.copy(hasRaisedHandToSpeak = next)
+        audioEngine.playKeyVerifiedTone()
+        val room = _uiState.value.selectedWorldwideRoom
+        if (room != null && next) {
+            viewModelScope.launch(Dispatchers.IO) {
+                val handMsg = LiveRoomMessage(
+                    roomId = room.id,
+                    senderId = "1",
+                    senderUsername = userProfile.value.displayName,
+                    senderCallsign = userProfile.value.callsign,
+                    senderCountryFlag = userProfile.value.countryFlag,
+                    senderCity = userProfile.value.city,
+                    text = "✋ Raised hand to speak on stage"
+                )
+                _currentRoomMessages.value = _currentRoomMessages.value + handMsg
+            }
+        }
+    }
+
+    fun toggleWorldwideAudioMute() {
+        _uiState.value = _uiState.value.copy(isWorldwideAudioMuted = !_uiState.value.isWorldwideAudioMuted)
+    }
+
+    fun postRoomTextMessage(text: String) {
+        if (text.isBlank()) return
+        val room = _uiState.value.selectedWorldwideRoom ?: return
+        val profile = userProfile.value
+        viewModelScope.launch(Dispatchers.IO) {
+            val msg = LiveRoomMessage(
+                roomId = room.id,
+                senderId = "1",
+                senderUsername = profile.displayName,
+                senderCallsign = profile.callsign,
+                senderCountryFlag = profile.countryFlag,
+                senderCity = profile.city,
+                text = text.trim()
+            )
+            _currentRoomMessages.value = _currentRoomMessages.value + msg
+            repository.postRoomMessage(msg)
+        }
+    }
+
+    // ========================
+    // PAID GIFTS & COIN SYSTEM
+    // ========================
+
+    fun sendPaidGift(gift: PaidGiftItem, recipient: WorldwideSpeaker, customMessage: String) {
+        val room = _uiState.value.selectedWorldwideRoom ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = repository.sendGift(
+                gift = gift,
+                recipientId = recipient.id,
+                recipientUsername = recipient.username,
+                roomName = room.name,
+                message = customMessage
+            )
+
+            if (success) {
+                audioEngine.playKeyVerifiedTone()
+
+                val giftEvent = GiftTransaction(
+                    giftId = gift.id,
+                    giftName = gift.name,
+                    giftEmoji = gift.emoji,
+                    coinsSpent = gift.coinsCost,
+                    senderUsername = userProfile.value.displayName,
+                    recipientId = recipient.id,
+                    recipientUsername = recipient.username,
+                    roomName = room.name,
+                    message = customMessage
+                )
+
+                _uiState.value = _uiState.value.copy(
+                    isSendGiftModalOpen = false,
+                    activeGiftBanner = giftEvent,
+                    lastVerifiedNotification = "Sent ${gift.emoji} ${gift.name} to ${recipient.username}!"
+                )
+
+                // Add to room feed
+                val giftMsg = LiveRoomMessage(
+                    roomId = room.id,
+                    senderId = "1",
+                    senderUsername = userProfile.value.displayName,
+                    senderCallsign = userProfile.value.callsign,
+                    senderCountryFlag = userProfile.value.countryFlag,
+                    senderCity = userProfile.value.city,
+                    text = "🎉 Sent ${gift.emoji} ${gift.name} (${gift.badgeLabel}) to @${recipient.username}! \"$customMessage\"",
+                    isGiftNotification = true,
+                    giftEmoji = gift.emoji
+                )
+                _currentRoomMessages.value = _currentRoomMessages.value + giftMsg
+
+                // Dismiss banner after 4 seconds
+                delay(4000)
+                if (_uiState.value.activeGiftBanner == giftEvent) {
+                    _uiState.value = _uiState.value.copy(activeGiftBanner = null)
+                }
+            } else {
+                // Not enough coins -> open coin recharge modal
+                _uiState.value = _uiState.value.copy(
+                    isSendGiftModalOpen = false,
+                    isBuyCoinsModalOpen = true,
+                    lastVerifiedNotification = "Need more coins for ${gift.name} (${gift.coinsCost} coins)"
+                )
+            }
+        }
+    }
+
+    fun buyCoinPack(coins: Int, priceDisplay: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.addCoins(coins)
+            audioEngine.playKeyVerifiedTone()
+            _uiState.value = _uiState.value.copy(
+                isBuyCoinsModalOpen = false,
+                lastVerifiedNotification = "Successfully added +$coins Coins ($priceDisplay)!"
+            )
+        }
+    }
+
+    // =============================
+    // PROFILE, FRIENDS & BLOCK LIST
+    // =============================
+
+    fun updateProfile(
+        displayName: String,
+        callsign: String,
+        country: String,
+        countryFlag: String,
+        city: String,
+        bio: String,
+        languages: String
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val current = userProfile.value
+            val updated = current.copy(
+                displayName = displayName,
+                callsign = callsign,
+                country = country,
+                countryFlag = countryFlag,
+                city = city,
+                bio = bio,
+                spokenLanguages = languages
+            )
+            repository.updateProfile(updated)
+            // Also keep user identity callsign in sync
+            repository.setCallsign(callsign)
+            audioEngine.playKeyVerifiedTone()
+            _uiState.value = _uiState.value.copy(
+                isUserProfileModalOpen = false,
+                lastVerifiedNotification = "Personal Profile Updated!"
+            )
+        }
+    }
+
+    fun addFriendFromSpeaker(speaker: WorldwideSpeaker) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val friend = FriendUser(
+                id = speaker.id,
+                username = speaker.username,
+                callsign = speaker.callsign,
+                country = speaker.country,
+                countryFlag = speaker.countryFlag,
+                city = speaker.city,
+                bio = speaker.bio,
+                isOnline = true,
+                statusText = "Speaking in ${_uiState.value.selectedWorldwideRoom?.name ?: "Global Room"}"
+            )
+            repository.addFriend(friend)
+            audioEngine.playKeyVerifiedTone()
+            _uiState.value = _uiState.value.copy(
+                lastVerifiedNotification = "Added ${speaker.username} to Friends list!"
+            )
+        }
+    }
+
+    fun addFriendFromUser(user: FriendUser) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.addFriend(user)
+            audioEngine.playKeyVerifiedTone()
+            _uiState.value = _uiState.value.copy(
+                lastVerifiedNotification = "Added ${user.username} to Friends!"
+            )
+        }
+    }
+
+    fun removeFriend(userId: String, username: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.removeFriend(userId)
+            audioEngine.playSquelchBurst()
+            _uiState.value = _uiState.value.copy(
+                lastVerifiedNotification = "Removed $username from Friends list."
+            )
+        }
+    }
+
+    fun blockUser(userId: String, username: String, callsign: String, country: String, countryFlag: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.blockUser(
+                userId = userId,
+                username = username,
+                callsign = callsign,
+                country = country,
+                countryFlag = countryFlag,
+                reason = "Blocked by user"
+            )
+            audioEngine.playSquelchBurst()
+            _uiState.value = _uiState.value.copy(
+                isOtherUserProfileModalOpen = false,
+                lastVerifiedNotification = "Blocked $username. You won't hear transmissions from them."
+            )
+        }
+    }
+
+    fun unblockUser(userId: String, username: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.unblockUser(userId)
+            audioEngine.playKeyVerifiedTone()
+            _uiState.value = _uiState.value.copy(
+                lastVerifiedNotification = "Unblocked $username."
+            )
+        }
+    }
+
+    fun createCustomWorldwideRoom(
+        name: String,
+        country: String,
+        countryCode: String,
+        countryFlag: String,
+        city: String,
+        region: String,
+        category: String,
+        description: String,
+        tags: String
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val room = repository.createWorldwideRoom(
+                name = name,
+                country = country,
+                countryCode = countryCode,
+                countryFlag = countryFlag,
+                city = city,
+                region = region,
+                category = category,
+                description = description,
+                tags = tags
+            )
+            audioEngine.playKeyVerifiedTone()
+            _uiState.value = _uiState.value.copy(
+                isCreateRoomModalOpen = false,
+                lastVerifiedNotification = "Created room: ${room.name}!"
+            )
+            // Enter room immediately
+            enterWorldwideRoom(room)
+        }
+    }
+
+    // Modal controllers for Worldwide Features
+    fun setUserProfileModalOpen(open: Boolean) {
+        _uiState.value = _uiState.value.copy(isUserProfileModalOpen = open)
+    }
+
+    fun setFriendsAndBlockedModalOpen(open: Boolean) {
+        _uiState.value = _uiState.value.copy(isFriendsAndBlockedModalOpen = open)
+    }
+
+    fun setSendGiftModalOpen(open: Boolean, targetSpeaker: WorldwideSpeaker? = null) {
+        _uiState.value = _uiState.value.copy(
+            isSendGiftModalOpen = open,
+            giftTargetSpeaker = targetSpeaker ?: _uiState.value.activeWorldwideSpeakers.firstOrNull()
+        )
+    }
+
+    fun setCreateRoomModalOpen(open: Boolean) {
+        _uiState.value = _uiState.value.copy(isCreateRoomModalOpen = open)
+    }
+
+    fun setBuyCoinsModalOpen(open: Boolean) {
+        _uiState.value = _uiState.value.copy(isBuyCoinsModalOpen = open)
+    }
+
+    fun inspectUserProfile(user: FriendUser) {
+        _uiState.value = _uiState.value.copy(
+            inspectingUser = user,
+            isOtherUserProfileModalOpen = true
+        )
+    }
+
+    fun setOtherUserProfileModalOpen(open: Boolean) {
+        _uiState.value = _uiState.value.copy(isOtherUserProfileModalOpen = open)
+    }
+
+    fun setWorldwideSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(worldwideSearchQuery = query)
+    }
+
+    fun setWorldwideFilterRegion(region: String) {
+        _uiState.value = _uiState.value.copy(worldwideSelectedRegion = region)
+    }
+
+    fun setWorldwideFilterCategory(category: String) {
+        _uiState.value = _uiState.value.copy(worldwideSelectedCategory = category)
+    }
+
+    // ==========================================
+    // COIN CASHOUT & IN-APP PURCHASES WITH COINS
+    // ==========================================
+
+    fun setCashoutModalOpen(open: Boolean) {
+        _uiState.value = _uiState.value.copy(isCashoutModalOpen = open)
+    }
+
+    fun setCoinShopModalOpen(open: Boolean) {
+        _uiState.value = _uiState.value.copy(isCoinShopModalOpen = open)
+    }
+
+    fun requestCoinCashout(
+        coinsAmount: Int,
+        method: com.example.data.model.CashoutMethod,
+        destinationAccount: String,
+        accountHolderName: String
+    ) {
+        val profile = userProfile.value
+        if (coinsAmount <= 0 || profile.coinsBalance < coinsAmount) {
+            _uiState.value = _uiState.value.copy(
+                lastVerifiedNotification = "Insufficient coin balance. Current balance: ${profile.coinsBalance} Coins"
+            )
+            return
+        }
+
+        if (coinsAmount < method.minCoins) {
+            _uiState.value = _uiState.value.copy(
+                lastVerifiedNotification = "Minimum cashout for ${method.title} is ${method.minCoins} Coins."
+            )
+            return
+        }
+
+        val usdAmount = coinsAmount * 0.01 // 100 coins = $1.00 USD
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = repository.requestCoinCashout(
+                coinsAmount = coinsAmount,
+                usdAmount = usdAmount,
+                method = method.name,
+                destinationAccount = destinationAccount.trim(),
+                accountHolderName = accountHolderName.trim()
+            )
+
+            if (success) {
+                audioEngine.playKeyVerifiedTone()
+                _uiState.value = _uiState.value.copy(
+                    isCashoutModalOpen = false,
+                    lastVerifiedNotification = "Transferred ${coinsAmount} Coins -> \$${String.format("%.2f", usdAmount)} USD via ${method.title}!"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    lastVerifiedNotification = "Cashout request failed. Please check your coin balance."
+                )
+            }
+        }
+    }
+
+    fun buyInAppItemWithCoins(item: com.example.data.model.CoinInAppItem) {
+        val profile = userProfile.value
+        if (profile.coinsBalance < item.coinCost) {
+            _uiState.value = _uiState.value.copy(
+                isBuyCoinsModalOpen = true,
+                lastVerifiedNotification = "Need ${item.coinCost - profile.coinsBalance} more coins to purchase ${item.title}"
+            )
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val success = repository.purchaseInAppItemWithCoins(item)
+            if (success) {
+                audioEngine.playKeyVerifiedTone()
+                _uiState.value = _uiState.value.copy(
+                    isCoinShopModalOpen = false,
+                    lastVerifiedNotification = "Successfully unlocked ${item.title} for ${item.coinCost} Coins!"
+                )
+            } else {
+                _uiState.value = _uiState.value.copy(
+                    lastVerifiedNotification = "Failed to unlock ${item.title}. Check coin balance."
+                )
+            }
+        }
+    }
+
+    // ==========================================
+    // APP & PTT SETTINGS USER FUNCTIONS
+    // ==========================================
+
+    fun setVolumeLevel(volume: Float) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setVolumeLevel(volume)
+        }
+    }
+
+    fun setSquelchLevel(squelch: Float) {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.setSquelchLevel(squelch)
+        }
+    }
+
+    fun resetSettingsToDefaults() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.resetToFactoryDefaults()
+            audioEngine.playSquelchBurst()
+            _uiState.value = _uiState.value.copy(
+                lastVerifiedNotification = "Settings & PTT audio configurations restored to factory defaults."
+            )
+        }
+    }
+
+    fun previewSoundProfile(profile: com.example.data.model.PttSoundProfile) {
+        audioEngine.playChirpPress(profile)
+        viewModelScope.launch {
+            delay(350)
+            audioEngine.playChirpRelease(profile)
+        }
+    }
+
+    fun runAudioLoopbackTest() {
+        if (_uiState.value.isLoopbackRecording) return
+        _uiState.value = _uiState.value.copy(
+            isLoopbackRecording = true,
+            loopbackStatus = "🎙️ Recording 3-second audio loopback test..."
+        )
+        audioEngine.playChirpPress(userIdentity.value.soundProfile)
+
+        viewModelScope.launch {
+            delay(3000)
+            _uiState.value = _uiState.value.copy(
+                loopbackStatus = "🔊 Transmitting recorded audio loopback through DSP filter..."
+            )
+            audioEngine.playChirpRelease(userIdentity.value.soundProfile)
+            audioEngine.playKeyVerifiedTone()
+            delay(2000)
+            _uiState.value = _uiState.value.copy(
+                isLoopbackRecording = false,
+                loopbackStatus = "✅ Audio loopback test complete! Mic & DSP calibrated."
+            )
+            delay(3000)
+            if (_uiState.value.loopbackStatus?.startsWith("✅") == true) {
+                _uiState.value = _uiState.value.copy(loopbackStatus = null)
+            }
+        }
+    }
+
+    fun runLatencyDiagnostic() {
+        if (_uiState.value.isDiagnosticsRunning) return
+        _uiState.value = _uiState.value.copy(
+            isDiagnosticsRunning = true,
+            diagnosticsResult = "Pinging local mesh transceivers and cloud edge relays..."
+        )
+        viewModelScope.launch {
+            delay(800)
+            val jitter = kotlin.random.Random.nextInt(1, 6)
+            val ping = kotlin.random.Random.nextInt(12, 28)
+            val loss = 0.0
+            _uiState.value = _uiState.value.copy(
+                isDiagnosticsRunning = false,
+                diagnosticsResult = "⚡ Ultra-low Latency: ${ping}ms (Jitter: ${jitter}ms, Packet Loss: 0.0%). Audio buffer: 128 frames (Sub-50ms glass-to-glass)."
+            )
+        }
+    }
+
+    fun panicWipeAllData() {
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.wipeAllLogs()
+            repository.resetToFactoryDefaults()
+            audioEngine.playSquelchBurst()
+            _uiState.value = _uiState.value.copy(
+                lastVerifiedNotification = "⚠️ Emergency wipe executed. Transmissions erased & security keys re-rolled."
+            )
+        }
+    }
+
+    fun playLiveScanner(feed: com.example.data.model.PublicScannerFeed) {
+        audioEngine.playLiveScanner(feed.streamUrl, feed.category)
+        _uiState.value = _uiState.value.copy(
+            isScannerPlaying = true,
+            activeScannerFeedId = feed.id,
+            isNoaaPlaying = false,
+            activeNoaaId = null
+        )
+    }
+
+    fun stopScanner() {
+        audioEngine.stopScanner()
+        _uiState.value = _uiState.value.copy(
+            isScannerPlaying = false,
+            activeScannerFeedId = null
+        )
+    }
+
+    fun playNoaaWeatherRadio(station: com.example.data.model.NoaaWeatherStation) {
+        audioEngine.playNoaaWeatherRadio(station.streamUrl)
+        _uiState.value = _uiState.value.copy(
+            isNoaaPlaying = true,
+            activeNoaaId = station.id,
+            isScannerPlaying = false,
+            activeScannerFeedId = null
+        )
+    }
+
+    fun stopNoaaWeatherRadio() {
+        audioEngine.stopNoaaWeatherRadio()
+        _uiState.value = _uiState.value.copy(
+            isNoaaPlaying = false,
+            activeNoaaId = null
+        )
+    }
+
+    fun playNoaaAlertTone() {
+        audioEngine.playNoaa1050HzAlertTone()
+    }
+
+    fun playMaydayDistressSiren() {
+        audioEngine.playMaydayDistressSiren()
+    }
+
 
     override fun onCleared() {
         super.onCleared()

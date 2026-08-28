@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PhoneIphone
 import androidx.compose.material.icons.filled.Security
@@ -63,199 +64,165 @@ fun HudTopBar(
     onOpenSubscriptionPlans: () -> Unit = {},
     onOpenThemeSelector: () -> Unit = {},
     onOpenPhoneConfirm: () -> Unit,
+    onOpenMenu: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val accentColor = Color(userIdentity.themeScheme.primaryHex)
-    val glowColor = Color(userIdentity.themeScheme.glowHex)
+    val isBurner = userIdentity.activeNumberType == NumberType.BURNER
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(TacticalDarkBg)
-            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .padding(horizontal = 16.dp, vertical = 10.dp)
     ) {
-        // Main Title Row
+        // Main Clean Header Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // Radio antenna status dot
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(accentColor)
-                )
+            // Left: Logo & Identity Info
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(9.dp)
+                            .clip(CircleShape)
+                            .background(accentColor)
+                    )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                    Spacer(modifier = Modifier.width(7.dp))
 
-                Text(
-                    text = "INSTAWIRE",
-                    color = TacticalTextPrimary,
-                    fontWeight = FontWeight.Black,
-                    fontSize = 20.sp,
-                    letterSpacing = 2.sp,
-                    fontFamily = FontFamily.Monospace
-                )
-
-                Spacer(modifier = Modifier.width(6.dp))
-
-                // Subscription Tier Badge pill
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            when (userIdentity.subscriptionTier) {
-                                SubscriptionTier.FREE -> TacticalSurfaceElevated
-                                SubscriptionTier.PRO -> TacticalCyan.copy(alpha = 0.2f)
-                                SubscriptionTier.BLACK_OPS -> BurnerGold.copy(alpha = 0.2f)
-                                SubscriptionTier.GHOST_SENTINEL -> accentColor.copy(alpha = 0.2f)
-                            }
-                        )
-                        .clickable { onOpenSubscriptionPlans() }
-                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                        .testTag("hud_tier_badge")
-                ) {
                     Text(
-                        text = userIdentity.subscriptionTier.badgeLabel,
-                        color = when (userIdentity.subscriptionTier) {
-                            SubscriptionTier.FREE -> TacticalTextMuted
-                            SubscriptionTier.PRO -> TacticalCyan
-                            SubscriptionTier.BLACK_OPS -> BurnerGold
-                            SubscriptionTier.GHOST_SENTINEL -> accentColor
-                        },
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 9.sp,
+                        text = "INSTAWIRE",
+                        color = TacticalTextPrimary,
+                        fontWeight = FontWeight.Black,
+                        fontSize = 18.sp,
+                        letterSpacing = 1.5.sp,
                         fontFamily = FontFamily.Monospace
                     )
+
+                    Spacer(modifier = Modifier.width(6.dp))
+
+                    // Subscription tier badge
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                when (userIdentity.subscriptionTier) {
+                                    SubscriptionTier.FREE -> TacticalSurfaceElevated
+                                    SubscriptionTier.PRO -> TacticalCyan.copy(alpha = 0.2f)
+                                    SubscriptionTier.BLACK_OPS -> BurnerGold.copy(alpha = 0.2f)
+                                    SubscriptionTier.GHOST_SENTINEL -> accentColor.copy(alpha = 0.2f)
+                                }
+                            )
+                            .clickable { onOpenSubscriptionPlans() }
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                            .testTag("hud_tier_badge")
+                    ) {
+                        Text(
+                            text = userIdentity.subscriptionTier.badgeLabel,
+                            color = when (userIdentity.subscriptionTier) {
+                                SubscriptionTier.FREE -> TacticalTextMuted
+                                SubscriptionTier.PRO -> TacticalCyan
+                                SubscriptionTier.BLACK_OPS -> BurnerGold
+                                SubscriptionTier.GHOST_SENTINEL -> accentColor
+                            },
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 8.5.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(2.dp))
+
+                // Active callsign & number subtitle
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable { onOpenPhoneConfirm() }
+                ) {
+                    Text(
+                        text = userIdentity.callsign,
+                        color = accentColor,
+                        fontSize = 10.5.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = " • ${userIdentity.activeDisplayNumber}",
+                        color = TacticalTextMuted,
+                        fontSize = 10.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    if (isBurner) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "[BURNER]",
+                            color = BurnerGold,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
                 }
             }
 
+            // Right: Security Lock & All-Features Menu Button
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Themes & Sounds Palette Quick Button
+                // Encryption status lock icon
                 Box(
                     modifier = Modifier
-                        .size(32.dp)
+                        .size(34.dp)
                         .clip(CircleShape)
-                        .background(accentColor.copy(alpha = 0.15f))
-                        .border(1.dp, accentColor.copy(alpha = 0.5f), CircleShape)
-                        .clickable { onOpenThemeSelector() }
-                        .testTag("hud_theme_palette_button"),
+                        .background(TacticalSurfaceElevated)
+                        .border(1.dp, TacticalCardBorder, CircleShape)
+                        .clickable { onOpenSafetyKey() }
+                        .testTag("e2ee_status_button"),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Palette,
-                        contentDescription = "Themes & Layouts Menu",
-                        tint = accentColor,
+                        imageVector = Icons.Default.Lock,
+                        contentDescription = "256-Bit E2EE Security",
+                        tint = if (userIdentity.isE2eeActive) PttNeonGreen else TacticalAmber,
                         modifier = Modifier.size(16.dp)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(6.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                // Visual Encryption Status Badge with Green Lock Icon
-                EncryptionStatusBadge(
-                    isEncrypted = userIdentity.isE2eeActive,
-                    isKeyVerified = true,
-                    onClick = onOpenSafetyKey,
-                    modifier = Modifier.testTag("e2ee_status_button")
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        // Secondary Info Strip: Active Number & Noise Cancellation Pills
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Active Phone / Burner chip
-            val isBurner = userIdentity.activeNumberType == NumberType.BURNER
-            Row(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(TacticalSurface)
-                    .border(
-                        1.dp,
-                        if (isBurner) BurnerGold.copy(alpha = 0.6f) else TacticalCyan.copy(alpha = 0.4f),
-                        RoundedCornerShape(8.dp)
-                    )
-                    .clickable {
-                        if (isBurner) onOpenBurnerStore() else onOpenPhoneConfirm()
+                // PROMINENT ALL-FEATURES MENU BUTTON
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(accentColor.copy(alpha = 0.18f))
+                        .border(1.2.dp, accentColor, RoundedCornerShape(10.dp))
+                        .clickable { onOpenMenu() }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                        .testTag("hud_menu_button"),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.Menu,
+                            contentDescription = "Features Menu",
+                            tint = accentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "MENU",
+                            color = accentColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            fontFamily = FontFamily.Monospace,
+                            letterSpacing = 1.sp
+                        )
                     }
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .testTag("active_number_chip"),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = if (isBurner) Icons.Default.Whatshot else Icons.Default.PhoneIphone,
-                    contentDescription = "Active Number",
-                    tint = if (isBurner) BurnerGold else TacticalCyan,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(6.dp))
-                Column {
-                    Text(
-                        text = if (isBurner) "VIP BURNER LINE" else "PHONE NUMBER LINE",
-                        color = if (isBurner) BurnerGold else TacticalCyan,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = userIdentity.activeDisplayNumber,
-                        color = TacticalTextPrimary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-            }
-
-            // Advanced Noise Filter chip
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(TacticalSurface)
-                    .border(
-                        1.dp,
-                        if (userIdentity.noiseFilterEnabled) PttGreenGlow.copy(alpha = 0.5f) else TacticalCardBorder,
-                        RoundedCornerShape(8.dp)
-                    )
-                    .clickable { onOpenNoiseCancel() }
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
-                    .testTag("noise_filter_chip"),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.GraphicEq,
-                    contentDescription = "Noise Filter",
-                    tint = if (userIdentity.noiseFilterEnabled) PttNeonGreen else TacticalTextMuted,
-                    modifier = Modifier.size(15.dp)
-                )
-                Spacer(modifier = Modifier.width(5.dp))
-                Column {
-                    Text(
-                        text = "NOISE FILTER",
-                        color = if (userIdentity.noiseFilterEnabled) PttNeonGreen else TacticalTextMuted,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace
-                    )
-                    Text(
-                        text = if (userIdentity.noiseFilterEnabled) "ACTIVE ON" else "BYPASS OFF",
-                        color = TacticalTextPrimary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        fontFamily = FontFamily.Monospace
-                    )
                 }
             }
         }
     }
 }
+

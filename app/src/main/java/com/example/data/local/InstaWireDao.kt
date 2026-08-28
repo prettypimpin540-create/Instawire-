@@ -81,4 +81,87 @@ interface InstaWireDao {
 
     @Query("DELETE FROM transmissions")
     suspend fun clearAllTransmissions()
+
+    // User Profile
+    @Query("SELECT * FROM user_profiles WHERE id = 1")
+    fun getUserProfile(): Flow<com.example.data.model.UserProfile?>
+
+    @Query("SELECT * FROM user_profiles WHERE id = 1")
+    suspend fun getUserProfileSync(): com.example.data.model.UserProfile?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertOrUpdateProfile(profile: com.example.data.model.UserProfile)
+
+    @Query("UPDATE user_profiles SET coinsBalance = coinsBalance + :coinsToAdd WHERE id = 1")
+    suspend fun addCoins(coinsToAdd: Int)
+
+    @Query("UPDATE user_profiles SET coinsBalance = coinsBalance - :coinsToDeduct, totalGiftsSent = totalGiftsSent + 1 WHERE id = 1")
+    suspend fun deductCoinsForGift(coinsToDeduct: Int)
+
+    // Worldwide Rooms
+    @Query("SELECT * FROM worldwide_rooms ORDER BY activeListeners DESC")
+    fun getAllWorldwideRooms(): Flow<List<com.example.data.model.WorldwideRoom>>
+
+    @Query("SELECT * FROM worldwide_rooms WHERE id = :roomId")
+    fun getWorldwideRoom(roomId: String): Flow<com.example.data.model.WorldwideRoom?>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWorldwideRoom(room: com.example.data.model.WorldwideRoom)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWorldwideRooms(rooms: List<com.example.data.model.WorldwideRoom>)
+
+    @Query("DELETE FROM worldwide_rooms WHERE id = :roomId")
+    suspend fun deleteWorldwideRoom(roomId: String)
+
+    // Friends
+    @Query("SELECT * FROM friends ORDER BY isOnline DESC, username ASC")
+    fun getAllFriends(): Flow<List<com.example.data.model.FriendUser>>
+
+    @Query("SELECT * FROM friends WHERE id = :userId")
+    suspend fun getFriendById(userId: String): com.example.data.model.FriendUser?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFriend(friend: com.example.data.model.FriendUser)
+
+    @Query("DELETE FROM friends WHERE id = :userId")
+    suspend fun deleteFriend(userId: String)
+
+    // Blocked Users
+    @Query("SELECT * FROM blocked_users ORDER BY blockedAt DESC")
+    fun getAllBlockedUsers(): Flow<List<com.example.data.model.BlockedUser>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun blockUser(blockedUser: com.example.data.model.BlockedUser)
+
+    @Query("DELETE FROM blocked_users WHERE id = :userId")
+    suspend fun unblockUser(userId: String)
+
+    @Query("SELECT EXISTS(SELECT 1 FROM blocked_users WHERE id = :userId)")
+    suspend fun isUserBlocked(userId: String): Boolean
+
+    // Gift Transactions
+    @Query("SELECT * FROM gift_transactions ORDER BY timestamp DESC LIMIT 50")
+    fun getAllGiftTransactions(): Flow<List<com.example.data.model.GiftTransaction>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertGiftTransaction(transaction: com.example.data.model.GiftTransaction)
+
+    // Live Room Messages
+    @Query("SELECT * FROM room_messages WHERE roomId = :roomId ORDER BY timestamp ASC LIMIT 100")
+    fun getRoomMessages(roomId: String): Flow<List<com.example.data.model.LiveRoomMessage>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertRoomMessage(message: com.example.data.model.LiveRoomMessage)
+
+    // Coin Cashout Transactions & In-App Coin Purchases
+    @Query("SELECT * FROM coin_cashouts ORDER BY timestamp DESC")
+    fun getAllCashoutTransactions(): Flow<List<com.example.data.model.CoinCashoutTransaction>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCashoutTransaction(cashout: com.example.data.model.CoinCashoutTransaction): Long
+
+    @Query("UPDATE user_profiles SET coinsBalance = coinsBalance - :coinsToDeduct WHERE id = 1 AND coinsBalance >= :coinsToDeduct")
+    suspend fun deductCoins(coinsToDeduct: Int): Int
 }
+

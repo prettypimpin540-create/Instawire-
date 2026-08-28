@@ -121,7 +121,7 @@ fun PttTactileButton(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isTransmitting) 900 else 2400, easing = LinearEasing),
+            animation = tween(if (isTransmitting) 650 else 2400, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "pulse_wave_1"
@@ -132,21 +132,54 @@ fun PttTactileButton(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isTransmitting) 900 else 2400, delayMillis = if (isTransmitting) 450 else 1200, easing = LinearEasing),
+            animation = tween(if (isTransmitting) 650 else 2400, delayMillis = if (isTransmitting) 325 else 1200, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "pulse_wave_2"
     )
 
-    // Ambient breathing aura
-    val breathingAura by infiniteTransition.animateFloat(
-        initialValue = 0.98f,
-        targetValue = 1.08f,
+    // Pulse Ring 3 (High-frequency third ripple for recording)
+    val pulseWave3 by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isTransmitting) 500 else 1800, easing = FastOutSlowInEasing),
+            animation = tween(if (isTransmitting) 650 else 2400, delayMillis = if (isTransmitting) 160 else 600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulse_wave_3"
+    )
+
+    // Ambient breathing aura / glowing recording pulse
+    val breathingAura by infiniteTransition.animateFloat(
+        initialValue = if (isTransmitting) 0.95f else 0.98f,
+        targetValue = if (isTransmitting) 1.22f else 1.08f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(if (isTransmitting) 380 else 1800, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "breathing_aura"
+    )
+
+    // Microphone icon rhythmic pulse scale while recording
+    val micRecordingPulse by infiniteTransition.animateFloat(
+        initialValue = 1.0f,
+        targetValue = if (isTransmitting) 1.32f else 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(if (isTransmitting) 400 else 1000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "mic_recording_pulse"
+    )
+
+    // Recording dot blink animation
+    val recordingDotAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.2f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(300, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "recording_dot_alpha"
     )
 
     val customPrimary = Color(themeScheme.primaryHex)
@@ -189,12 +222,12 @@ fun PttTactileButton(
 
             // 1. Expanding Staggered Pulse Wave 1
             val radius1 = baseRadius + (maxExpandRadius - baseRadius) * pulseWave1
-            val alpha1 = (1f - pulseWave1).coerceIn(0f, 1f) * if (isTransmitting) 0.85f else 0.4f
+            val alpha1 = (1f - pulseWave1).coerceIn(0f, 1f) * if (isTransmitting) 0.9f else 0.4f
             drawCircle(
                 color = primaryColor.copy(alpha = alpha1),
                 radius = radius1,
                 center = center,
-                style = Stroke(width = if (isTransmitting) 4.dp.toPx() else 2.dp.toPx())
+                style = Stroke(width = if (isTransmitting) 5.dp.toPx() else 2.dp.toPx())
             )
 
             // 2. Expanding Staggered Pulse Wave 2
@@ -204,16 +237,28 @@ fun PttTactileButton(
                 color = primaryColor.copy(alpha = alpha2),
                 radius = radius2,
                 center = center,
-                style = Stroke(width = if (isTransmitting) 3.5.dp.toPx() else 1.5.dp.toPx())
+                style = Stroke(width = if (isTransmitting) 4.dp.toPx() else 1.5.dp.toPx())
             )
 
-            // 3. Ambient Breathing Corona Halo
+            // 3. Expanding Rapid Wave 3 (Active microphone recording ripple)
+            if (isTransmitting) {
+                val radius3 = baseRadius + (maxExpandRadius - baseRadius) * pulseWave3
+                val alpha3 = (1f - pulseWave3).coerceIn(0f, 1f) * 0.75f
+                drawCircle(
+                    color = glowColor.copy(alpha = alpha3),
+                    radius = radius3,
+                    center = center,
+                    style = Stroke(width = 3.dp.toPx())
+                )
+            }
+
+            // 4. Ambient Breathing Corona Halo
             val coronaRadius = (baseRadius + 8.dp.toPx()) * breathingAura
             drawCircle(
-                color = glowColor.copy(alpha = if (isTransmitting) 0.35f else 0.12f),
+                color = glowColor.copy(alpha = if (isTransmitting) 0.45f else 0.12f),
                 radius = coronaRadius,
                 center = center,
-                style = Stroke(width = if (isTransmitting) 8.dp.toPx() else 3.dp.toPx())
+                style = Stroke(width = if (isTransmitting) 10.dp.toPx() else 3.dp.toPx())
             )
 
             // 4. Tactical Dial Compass Tick Marks
@@ -311,7 +356,7 @@ fun PttTactileButton(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
-                            .background(TacticalDarkBg.copy(alpha = 0.25f)),
+                            .background(TacticalDarkBg.copy(alpha = if (isTransmitting) 0.35f else 0.25f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -324,25 +369,41 @@ fun PttTactileButton(
                             tint = TacticalDarkBg,
                             modifier = Modifier
                                 .size(34.dp)
-                                .scale(if (isTransmitting) 1.18f else 1.0f)
+                                .scale(if (isTransmitting) micRecordingPulse else 1.0f)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
 
                     // Primary Action Label
-                    Text(
-                        text = when {
-                            isTransmitting -> "RECORDING LIVE"
-                            isIncoming -> "RECEIVING LIVE"
-                            else -> "HOLD TO TALK"
-                        },
-                        color = TacticalDarkBg,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 14.sp,
-                        letterSpacing = 1.2.sp,
-                        fontFamily = FontFamily.Monospace
-                    )
+                    if (isTransmitting) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(TacticalDarkBg.copy(alpha = recordingDotAlpha))
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "RECORDING LIVE",
+                                color = TacticalDarkBg,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp,
+                                letterSpacing = 1.2.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = if (isIncoming) "RECEIVING LIVE" else "HOLD TO TALK",
+                            color = TacticalDarkBg,
+                            fontWeight = FontWeight.Black,
+                            fontSize = 14.sp,
+                            letterSpacing = 1.2.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(2.dp))
 
