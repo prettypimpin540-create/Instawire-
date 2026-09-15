@@ -1,13 +1,11 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,46 +20,25 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountBalance
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.AttachMoney
+import androidx.compose.material.icons.filled.BatteryChargingFull
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.HeadsetMic
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.MonetizationOn
-import androidx.compose.material.icons.filled.NetworkCheck
+import androidx.compose.material.icons.filled.Hearing
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.SettingsRemote
-import androidx.compose.material.icons.filled.Shield
-import androidx.compose.material.icons.filled.ShoppingBag
-import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.SupportAgent
-import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.VpnKey
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -88,18 +65,13 @@ import androidx.compose.ui.unit.sp
 import com.example.data.model.AppThemeScheme
 import com.example.data.model.CoinCashoutTransaction
 import com.example.data.model.GiftTransaction
-import com.example.data.model.NoiseFilterMode
 import com.example.data.model.PttSoundProfile
-import com.example.data.model.SubscriptionTier
 import com.example.data.model.UserIdentity
 import com.example.data.model.UserProfile
 import com.example.data.model.WalkieLayoutType
 import com.example.ui.theme.BurnerGold
-import com.example.ui.theme.PttGreenDark
-import com.example.ui.theme.PttGreenGlow
 import com.example.ui.theme.PttHotRed
 import com.example.ui.theme.PttNeonGreen
-import com.example.ui.theme.TacticalAmber
 import com.example.ui.theme.TacticalCardBorder
 import com.example.ui.theme.TacticalCyan
 import com.example.ui.theme.TacticalDarkBg
@@ -108,39 +80,32 @@ import com.example.ui.theme.TacticalSurfaceElevated
 import com.example.ui.theme.TacticalTextMuted
 import com.example.ui.theme.TacticalTextPrimary
 import com.example.ui.theme.TacticalTextSecondary
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
-
-enum class SettingsCategory(val title: String, val emoji: String) {
-    ALL("All Settings", "⚡"),
-    AUDIO_PTT("PTT & Audio", "🎙️"),
-    COINS_CASHOUT("Coins & Cashout", "💰"),
-    THEMES_CHASSIS("Themes & Layouts", "🎨"),
-    PRIVACY_SECURITY("Privacy & Security", "🔒"),
-    DIAGNOSTICS_LAB("Diagnostics & Lab", "🛠️")
-}
 
 @Composable
 fun SettingsScreen(
     userIdentity: UserIdentity,
-    userProfile: UserProfile = UserProfile(),
+    userProfile: UserProfile? = null,
     cashoutHistory: List<CoinCashoutTransaction> = emptyList(),
     giftHistory: List<GiftTransaction> = emptyList(),
     onSetLayoutType: (WalkieLayoutType) -> Unit = {},
-    onSetThemeScheme: (AppThemeScheme) -> Unit = {},
-    onSetSoundProfile: (PttSoundProfile) -> Unit = {},
-    onPreviewSound: (PttSoundProfile, Boolean) -> Unit = { _, _ -> },
+    onSetThemeScheme: (AppThemeScheme) -> Unit,
+    onSetSoundProfile: (PttSoundProfile) -> Unit,
+    onPreviewSound: (PttSoundProfile, Boolean) -> Unit,
     onOpenThemeLayoutSelector: () -> Unit = {},
-    onToggleChirp: () -> Unit = {},
-    onToggleRogerBeep: () -> Unit = {},
+    onToggleChirp: () -> Unit,
+    onToggleRogerBeep: () -> Unit,
+    onToggleHapticFeedback: () -> Unit = {},
+    onToggleAudioRouting: () -> Unit = {},
+    onToggleSleepModeListening: () -> Unit = {},
     onToggleHardwareVolumePtt: () -> Unit = {},
+    onToggleHardwareVolumePttToggleMode: () -> Unit = {},
+    checkCallsignConflict: (String) -> com.example.data.model.CallsignConflict = { com.example.data.model.CallsignConflict(false) },
     onToggleBackgroundMonitoring: () -> Unit = {},
     onToggleBackgroundAudioBeep: () -> Unit = {},
     onToggleZeroLogs: () -> Unit = {},
     onSetEphemeralTimeout: (Int) -> Unit = {},
-    onSetCallsign: (String) -> Unit = {},
-    onSetVolumeLevel: (Float) -> Unit = {},
+    onSetCallsign: (String) -> Unit,
+    onSetVolumeLevel: (Float) -> Unit,
     onSetSquelchLevel: (Float) -> Unit = {},
     onConnectToSupport: () -> Unit = {},
     onOpenSubscriptionPlans: () -> Unit = {},
@@ -153,1171 +118,661 @@ fun SettingsScreen(
     onOpenBuyCoinsModal: () -> Unit = {},
     onRunAudioLoopbackTest: () -> Unit = {},
     onRunLatencyDiagnostic: () -> Unit = {},
-    onResetSettingsToDefaults: () -> Unit = {},
+    onResetSettingsToDefaults: () -> Unit,
+    onOpenWelcomeScreen: () -> Unit = {},
+    onOpenVerificationScreen: () -> Unit = {},
+    onOpenBurnerManager: () -> Unit = {},
+    onOpenWorldwideChatrooms: () -> Unit = {},
     onPanicWipeAllData: () -> Unit = {},
     isLoopbackRecording: Boolean = false,
     loopbackStatus: String? = null,
     isDiagnosticsRunning: Boolean = false,
     diagnosticsResult: String? = null,
+    audioCaptureState: com.example.service.AudioCaptureState = com.example.service.AudioCaptureState(),
+    onToggleScreenLockedBroadcast: () -> Unit = {},
+    onToggleBroadcastMute: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val accentColor = Color(userIdentity.themeScheme.primaryHex)
-    val tier = userIdentity.subscriptionTier
-    val accentGold = Color(0xFFF59E0B)
-    val accentGreen = Color(0xFF10B981)
-
-    var selectedCategory by remember { mutableStateOf(SettingsCategory.ALL) }
-    var isEditingCallsign by remember { mutableStateOf(false) }
-    var callsignInput by remember { mutableStateOf(userIdentity.callsign) }
-    var selectedAiTroubleshootTopic by remember { mutableStateOf<String?>(null) }
-    var showPanicConfirm by remember { mutableStateOf(false) }
-    var showResetConfirm by remember { mutableStateOf(false) }
+    var editName by remember(userIdentity.callsign) { mutableStateOf(userIdentity.callsign) }
+    var hasNameSaved by remember { mutableStateOf(false) }
 
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
             .background(TacticalDarkBg)
             .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        // 1. Interactive Category Filter Chips
         item {
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.fillMaxWidth()
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Settings",
+                color = TacticalTextPrimary,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "Personalize your walkie-talkie name, sounds, and look",
+                color = TacticalTextMuted,
+                fontSize = 12.5.sp
+            )
+        }
+
+        // CARD 1: PROFILE / NAME
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
             ) {
-                items(SettingsCategory.values()) { category ->
-                    val isSelected = selectedCategory == category
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (isSelected) accentColor.copy(alpha = 0.22f) else TacticalSurface)
-                            .border(1.dp, if (isSelected) accentColor else TacticalCardBorder, RoundedCornerShape(10.dp))
-                            .clickable { selectedCategory = category }
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .testTag("settings_cat_${category.name}")
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(accentColor.copy(alpha = 0.15f))
+                                .border(1.dp, accentColor, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = accentColor,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
                             Text(
-                                text = category.emoji,
-                                fontSize = 13.sp
+                                text = "Your Walkie Name",
+                                color = TacticalTextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Displayed to others on air",
+                                color = TacticalTextSecondary,
+                                fontSize = 11.5.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    val callsignConflict = checkCallsignConflict(editName)
+                    val isConflict = callsignConflict.isTaken && !editName.trim().equals(userIdentity.callsign.trim(), ignoreCase = true)
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = editName,
+                            onValueChange = {
+                                editName = it
+                                hasNameSaved = false
+                            },
+                            label = { Text("Display Name / Callsign") },
+                            singleLine = true,
+                            isError = isConflict,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = if (isConflict) PttHotRed else accentColor,
+                                unfocusedBorderColor = if (isConflict) PttHotRed.copy(alpha = 0.6f) else TacticalCardBorder,
+                                focusedTextColor = TacticalTextPrimary,
+                                unfocusedTextColor = TacticalTextPrimary
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .testTag("settings_name_input")
+                        )
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        Button(
+                            onClick = {
+                                if (editName.isNotBlank() && !isConflict) {
+                                    onSetCallsign(editName.trim())
+                                    hasNameSaved = true
+                                }
+                            },
+                            enabled = !isConflict && editName.isNotBlank(),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (hasNameSaved) PttNeonGreen else accentColor,
+                                contentColor = Color.Black,
+                                disabledContainerColor = TacticalSurfaceElevated,
+                                disabledContentColor = TacticalTextMuted
+                            ),
+                            modifier = Modifier
+                                .height(54.dp)
+                                .testTag("settings_save_name_button")
+                        ) {
+                            Icon(
+                                imageVector = if (hasNameSaved) Icons.Default.Check else Icons.Default.CheckCircle,
+                                contentDescription = "Save",
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (hasNameSaved) "Saved" else "Save",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.5.sp
+                            )
+                        }
+                    }
+
+                    if (isConflict) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(PttHotRed.copy(alpha = 0.15f))
+                                .border(1.dp, PttHotRed.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Security,
+                                contentDescription = null,
+                                tint = PttHotRed,
+                                modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = category.title,
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                color = if (isSelected) accentColor else TacticalTextMuted
+                                text = "Callsign already claimed by ${callsignConflict.takenBy}! Two operators cannot use the same callsign.",
+                                color = PttHotRed,
+                                fontSize = 11.5.sp,
+                                fontWeight = FontWeight.Medium
                             )
                         }
-                    }
-                }
-            }
-        }
-
-        // =========================================================================
-        // SECTION: OPERATOR IDENTITY & VIP SUBSCRIPTION TIER
-        // =========================================================================
-        if (selectedCategory == SettingsCategory.ALL || selectedCategory == SettingsCategory.COINS_CASHOUT) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, accentColor.copy(alpha = 0.6f), RoundedCornerShape(16.dp))
-                        .testTag("settings_subscription_card"),
-                    colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(CircleShape)
-                                        .background(accentColor.copy(alpha = 0.2f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = if (tier == SubscriptionTier.GHOST_SENTINEL) Icons.Default.Star else Icons.Default.Shield,
-                                        contentDescription = "Subscription",
-                                        tint = accentColor,
-                                        modifier = Modifier.size(22.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = tier.badgeLabel,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = accentColor,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = "${tier.title} (${tier.priceDisplay})",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TacticalTextPrimary
-                                    )
-                                }
-                            }
-
-                            Button(
-                                onClick = { onOpenSubscriptionPlans() },
-                                colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                modifier = Modifier.testTag("change_tier_button")
-                            ) {
-                                Text(
-                                    text = if (tier == SubscriptionTier.GHOST_SENTINEL) "Manage" else "Upgrade",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalDarkBg
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
+                    } else if (editName.isNotBlank() && !editName.trim().equals(userIdentity.callsign.trim(), ignoreCase = true)) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = tier.tagline,
-                            fontSize = 12.sp,
-                            color = TacticalTextSecondary
+                            text = "✓ Unique callsign available to claim",
+                            color = PttNeonGreen,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace
                         )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Divider(color = TacticalCardBorder)
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Operator Callsign In-line Editor
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = "OPERATOR CALLSIGN",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextMuted,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    text = userIdentity.callsign,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextPrimary,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-
-                            Button(
-                                onClick = { isEditingCallsign = !isEditingCallsign },
-                                colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = null,
-                                    tint = accentColor,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = if (isEditingCallsign) "Cancel" else "Change",
-                                    fontSize = 11.sp,
-                                    color = accentColor
-                                )
-                            }
-                        }
-
-                        AnimatedVisibility(visible = isEditingCallsign) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedTextField(
-                                    value = callsignInput,
-                                    onValueChange = { callsignInput = it.take(16).uppercase() },
-                                    label = { Text("New Callsign") },
-                                    singleLine = true,
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .testTag("settings_callsign_field"),
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        focusedBorderColor = accentColor,
-                                        unfocusedBorderColor = TacticalCardBorder,
-                                        focusedTextColor = TacticalTextPrimary,
-                                        unfocusedTextColor = TacticalTextPrimary,
-                                        focusedContainerColor = TacticalDarkBg,
-                                        unfocusedContainerColor = TacticalDarkBg
-                                    )
-                                )
-
-                                Button(
-                                    onClick = {
-                                        if (callsignInput.isNotBlank()) {
-                                            onSetCallsign(callsignInput)
-                                            isEditingCallsign = false
-                                        }
-                                    },
-                                    colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Text("Save", fontSize = 12.sp, color = TacticalDarkBg, fontWeight = FontWeight.Bold)
-                                }
-                            }
-                        }
                     }
                 }
             }
         }
 
-        // =========================================================================
-        // SECTION: VIRTUAL COINS & REAL MONEY CASHOUT HUB
-        // =========================================================================
-        if (selectedCategory == SettingsCategory.ALL || selectedCategory == SettingsCategory.COINS_CASHOUT) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, accentGold.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
-                        .testTag("settings_coins_cashout_card"),
-                    colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+        // CARD 2: AUDIO & SOUND EFFECTS
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(TacticalCyan.copy(alpha = 0.15f))
+                                .border(1.dp, TacticalCyan, CircleShape),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(36.dp)
-                                        .clip(CircleShape)
-                                        .background(accentGold.copy(alpha = 0.2f)),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MonetizationOn,
-                                        contentDescription = "Coins",
-                                        tint = accentGold,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Column {
-                                    Text(
-                                        text = "VIRTUAL COINS & REAL MONEY HUB",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = accentGold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = "Cash Out & In-App Purchases",
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TacticalTextPrimary
-                                    )
-                                }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(accentGreen.copy(alpha = 0.2f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "100 🪙 = \$1.00",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = accentGreen,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.VolumeUp,
+                                contentDescription = null,
+                                tint = TacticalCyan,
+                                modifier = Modifier.size(22.dp)
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Coin balance display
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = TacticalDarkBg),
-                            border = androidx.compose.foundation.BorderStroke(1.dp, TacticalCardBorder),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "CURRENT COIN BALANCE",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TacticalTextMuted,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Text(
-                                            text = "${userProfile.coinsBalance}",
-                                            fontSize = 22.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = accentGold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        Text(
-                                            text = " Coins",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = accentGold
-                                        )
-                                    }
-                                }
-
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = "REAL MONEY VALUE",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = TacticalTextMuted,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = "≈ \$${String.format(Locale.US, "%.2f", userProfile.coinsBalance * 0.01)} USD",
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = accentGreen,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Action Buttons: Cash-Out, Spend Coins on Store, Buy Coins
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            // Real Money Cashout Button
-                            Button(
-                                onClick = { onOpenCashoutModal() },
-                                colors = ButtonDefaults.buttonColors(containerColor = accentGreen),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(44.dp)
-                                    .testTag("settings_cashout_button")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.AttachMoney,
-                                    contentDescription = null,
-                                    tint = Color.Black,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Transfer Coins to Real Money (Cash Out 💵)",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Black
-                                )
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Spend Coins on In-App Store
-                                Button(
-                                    onClick = { onOpenCoinShopModal() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, accentGold.copy(alpha = 0.5f)),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(42.dp)
-                                        .testTag("settings_coin_store_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.ShoppingBag,
-                                        contentDescription = null,
-                                        tint = accentGold,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "In-App Store 🛍️",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = accentGold
-                                    )
-                                }
-
-                                // Buy Coins Pack
-                                Button(
-                                    onClick = { onOpenBuyCoinsModal() },
-                                    colors = ButtonDefaults.buttonColors(containerColor = accentGold),
-                                    shape = RoundedCornerShape(10.dp),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(42.dp)
-                                        .testTag("settings_buy_coins_button")
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.MonetizationOn,
-                                        contentDescription = null,
-                                        tint = Color.Black,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(
-                                        text = "+ Buy Coins 🪙",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color.Black
-                                    )
-                                }
-                            }
-                        }
-
-                        if (cashoutHistory.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(10.dp))
-                            val recent = cashoutHistory.first()
-                            val dateStr = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(recent.timestamp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
                             Text(
-                                text = "Last transfer: \$${String.format(Locale.US, "%.2f", recent.usdAmount)} USD to ${recent.method} ($dateStr)",
-                                fontSize = 11.sp,
-                                color = TacticalTextMuted
+                                text = "Audio & Sounds",
+                                color = TacticalTextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Walkie beeps, chirps, and speaker volume",
+                                color = TacticalTextSecondary,
+                                fontSize = 11.5.sp
                             )
                         }
                     }
-                }
-            }
-        }
 
-        // =========================================================================
-        // SECTION: PTT AUDIO & CHIRP SOUND PROFILES
-        // =========================================================================
-        if (selectedCategory == SettingsCategory.ALL || selectedCategory == SettingsCategory.AUDIO_PTT) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, TacticalCardBorder, RoundedCornerShape(16.dp))
-                        .testTag("settings_sound_profiles_card"),
-                    colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-                ) {
-                    Column(
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Start Talk Chirp
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(TacticalSurfaceElevated)
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.VolumeUp,
-                                    contentDescription = "Sound Profiles",
-                                    tint = accentColor,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "PTT AUDIO & CHIRP SOUNDBOARD",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextMuted,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(accentColor.copy(alpha = 0.2f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Talk Button Chime",
+                                color = TacticalTextPrimary,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Plays a quick chirp when you press to talk",
+                                color = TacticalTextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { onPreviewSound(userIdentity.soundProfile, true) },
+                                modifier = Modifier.size(34.dp)
                             ) {
-                                Text(
-                                    text = userIdentity.soundProfile.title,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = accentColor,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Sound Profiles Selector with Instant Preview
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            PttSoundProfile.values().forEach { soundProf ->
-                                val isSelected = userIdentity.soundProfile == soundProf
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .border(
-                                            1.dp,
-                                            if (isSelected) accentColor else TacticalCardBorder,
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .clickable { onSetSoundProfile(soundProf) }
-                                        .testTag("sound_profile_${soundProf.name}"),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (isSelected) accentColor.copy(alpha = 0.12f) else TacticalDarkBg
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(10.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    text = soundProf.title,
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isSelected) accentColor else TacticalTextPrimary
-                                                )
-                                                if (isSelected) {
-                                                    Spacer(modifier = Modifier.width(6.dp))
-                                                    Icon(
-                                                        imageVector = Icons.Default.CheckCircle,
-                                                        contentDescription = null,
-                                                        tint = accentColor,
-                                                        modifier = Modifier.size(14.dp)
-                                                    )
-                                                }
-                                            }
-                                            Text(
-                                                text = soundProf.description,
-                                                fontSize = 11.sp,
-                                                color = TacticalTextMuted
-                                            )
-                                        }
-
-                                        Row(
-                                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            IconButton(
-                                                onClick = { onPreviewSound(soundProf, true) },
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .clip(CircleShape)
-                                                    .background(TacticalSurfaceElevated)
-                                                    .testTag("preview_press_${soundProf.name}")
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.PlayArrow,
-                                                    contentDescription = "Press Chirp",
-                                                    tint = accentColor,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-
-                                            IconButton(
-                                                onClick = { onPreviewSound(soundProf, false) },
-                                                modifier = Modifier
-                                                    .size(32.dp)
-                                                    .clip(CircleShape)
-                                                    .background(TacticalSurfaceElevated)
-                                                    .testTag("preview_release_${soundProf.name}")
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Radio,
-                                                    contentDescription = "Release Beep",
-                                                    tint = TacticalCyan,
-                                                    modifier = Modifier.size(16.dp)
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Divider(color = TacticalCardBorder)
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Audio Toggles
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "PTT Press Chirp Tone",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TacticalTextPrimary
-                                )
-                                Text(
-                                    text = "Emits tactical tone when microphone transmitter locks",
-                                    fontSize = 11.sp,
-                                    color = TacticalTextMuted
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Test sound",
+                                    tint = TacticalCyan,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Switch(
                                 checked = userIdentity.chirpSoundEnabled,
                                 onCheckedChange = { onToggleChirp() },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = accentColor,
-                                    checkedTrackColor = accentColor.copy(alpha = 0.5f),
-                                    uncheckedThumbColor = TacticalTextMuted,
-                                    uncheckedTrackColor = TacticalSurfaceElevated
-                                ),
-                                modifier = Modifier.testTag("chirp_toggle")
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = accentColor
+                                )
                             )
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Roger Beep on Release",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TacticalTextPrimary
-                                )
-                                Text(
-                                    text = "Military acoustic squelch tone confirming over-and-out",
-                                    fontSize = 11.sp,
-                                    color = TacticalTextMuted
+                    // Roger Beep
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(TacticalSurfaceElevated)
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "End Roger Beep",
+                                color = TacticalTextPrimary,
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = "Plays a confirmation beep when you release talk",
+                                color = TacticalTextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(
+                                onClick = { onPreviewSound(userIdentity.soundProfile, false) },
+                                modifier = Modifier.size(34.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PlayArrow,
+                                    contentDescription = "Test roger beep",
+                                    tint = TacticalCyan,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                             Switch(
                                 checked = userIdentity.rogerBeepEnabled,
                                 onCheckedChange = { onToggleRogerBeep() },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = accentColor,
-                                    checkedTrackColor = accentColor.copy(alpha = 0.5f),
-                                    uncheckedThumbColor = TacticalTextMuted,
-                                    uncheckedTrackColor = TacticalSurfaceElevated
-                                ),
-                                modifier = Modifier.testTag("roger_beep_toggle")
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Hardware Volume Key PTT",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TacticalTextPrimary
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = accentColor
                                 )
-                                Text(
-                                    text = "Hold physical volume down key to transmit hands-free",
-                                    fontSize = 11.sp,
-                                    color = TacticalTextMuted
-                                )
-                            }
-                            Switch(
-                                checked = userIdentity.hardwareVolumePttEnabled,
-                                onCheckedChange = { onToggleHardwareVolumePtt() },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = accentColor,
-                                    checkedTrackColor = accentColor.copy(alpha = 0.5f),
-                                    uncheckedThumbColor = TacticalTextMuted,
-                                    uncheckedTrackColor = TacticalSurfaceElevated
-                                ),
-                                modifier = Modifier.testTag("hw_volume_ptt_toggle")
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Background Channel Monitor",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TacticalTextPrimary
-                                )
-                                Text(
-                                    text = "Keeps radio receiver alive when screen is locked",
-                                    fontSize = 11.sp,
-                                    color = TacticalTextMuted
-                                )
-                            }
-                            Switch(
-                                checked = userIdentity.backgroundMonitoringEnabled,
-                                onCheckedChange = { onToggleBackgroundMonitoring() },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = accentColor,
-                                    checkedTrackColor = accentColor.copy(alpha = 0.5f),
-                                    uncheckedThumbColor = TacticalTextMuted,
-                                    uncheckedTrackColor = TacticalSurfaceElevated
-                                ),
-                                modifier = Modifier.testTag("bg_monitor_toggle")
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Divider(color = TacticalCardBorder)
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Audio Sliders: Master Volume & Squelch Gate Threshold
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "TRANSMITTER MASTER VOLUME",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextMuted,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    text = "${(userIdentity.volumeLevel * 100).toInt()}%",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = accentColor,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                            Slider(
-                                value = userIdentity.volumeLevel,
-                                onValueChange = { onSetVolumeLevel(it) },
-                                valueRange = 0.1f..1.0f,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = accentColor,
-                                    activeTrackColor = accentColor,
-                                    inactiveTrackColor = TacticalSurfaceElevated
-                                ),
-                                modifier = Modifier.testTag("volume_slider")
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Column {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "ANALOG SQUELCH GATE THRESHOLD",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextMuted,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    text = "-${( (1f - userIdentity.squelchLevel) * 60 ).toInt()} dB",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalCyan,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                            Slider(
-                                value = userIdentity.squelchLevel,
-                                onValueChange = { onSetSquelchLevel(it) },
-                                valueRange = 0.05f..0.95f,
-                                colors = SliderDefaults.colors(
-                                    thumbColor = TacticalCyan,
-                                    activeTrackColor = TacticalCyan,
-                                    inactiveTrackColor = TacticalSurfaceElevated
-                                ),
-                                modifier = Modifier.testTag("squelch_slider")
                             )
                         }
                     }
-                }
-            }
-        }
 
-        // =========================================================================
-        // SECTION: THEMES, CHASSIS & SCREEN LAYOUTS
-        // =========================================================================
-        if (selectedCategory == SettingsCategory.ALL || selectedCategory == SettingsCategory.THEMES_CHASSIS) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, TacticalCardBorder, RoundedCornerShape(16.dp))
-                        .testTag("settings_themes_card"),
-                    colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-                ) {
-                    Column(
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // PTT Haptic Vibration Feedback
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(TacticalSurfaceElevated)
+                            .padding(12.dp)
+                            .testTag("settings_haptic_feedback_row"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.ColorLens,
-                                    contentDescription = "Themes",
+                                    imageVector = Icons.Default.Vibration,
+                                    contentDescription = null,
                                     tint = accentColor,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "THEMES & CHASSIS LAYOUTS",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextMuted,
-                                    fontFamily = FontFamily.Monospace
+                                    text = "PTT Haptic Vibration",
+                                    color = TacticalTextPrimary,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
-
-                            Button(
-                                onClick = { onOpenThemeLayoutSelector() },
-                                colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, accentColor.copy(alpha = 0.4f)),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
-                            ) {
-                                Text("Full Selector 🎨", fontSize = 11.sp, color = accentColor)
-                            }
+                            Text(
+                                text = "Vibration confirmation when starting and stopping speech",
+                                color = TacticalTextMuted,
+                                fontSize = 11.sp
+                            )
                         }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Theme Schemes Grid
-                        Text(
-                            text = "COLOR SCHEMES",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TacticalTextMuted,
-                            fontFamily = FontFamily.Monospace
+                        Switch(
+                            checked = userIdentity.hapticFeedbackEnabled,
+                            onCheckedChange = { onToggleHapticFeedback() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = accentColor
+                            ),
+                            modifier = Modifier.testTag("settings_haptic_toggle_switch")
                         )
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            items(AppThemeScheme.values()) { scheme ->
-                                val isSelected = userIdentity.themeScheme == scheme
-                                val schCol = Color(scheme.primaryHex)
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(if (isSelected) schCol.copy(alpha = 0.25f) else TacticalDarkBg)
-                                        .border(1.dp, if (isSelected) schCol else TacticalCardBorder, RoundedCornerShape(10.dp))
-                                        .clickable { onSetThemeScheme(scheme) }
-                                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                                        .testTag("theme_scheme_${scheme.name}")
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(14.dp)
-                                                .clip(CircleShape)
-                                                .background(schCol)
-                                        )
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text(
-                                            text = scheme.title,
-                                            fontSize = 12.sp,
-                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                            color = if (isSelected) schCol else TacticalTextPrimary
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Layout Styles
-                        Text(
-                            text = "CHASSIS HARDWARE LAYOUTS",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TacticalTextMuted,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            WalkieLayoutType.values().forEach { layout ->
-                                val isSelected = userIdentity.layoutType == layout
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .border(
-                                            1.dp,
-                                            if (isSelected) accentColor else TacticalCardBorder,
-                                            RoundedCornerShape(10.dp)
-                                        )
-                                        .clickable { onSetLayoutType(layout) }
-                                        .testTag("layout_type_${layout.name}"),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = if (isSelected) accentColor.copy(alpha = 0.12f) else TacticalDarkBg
-                                    )
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(10.dp),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column {
-                                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                                Text(
-                                                    text = layout.title,
-                                                    fontSize = 13.sp,
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = if (isSelected) accentColor else TacticalTextPrimary
-                                                )
-                                                if (isSelected) {
-                                                    Spacer(modifier = Modifier.width(6.dp))
-                                                    Icon(
-                                                        imageVector = Icons.Default.CheckCircle,
-                                                        contentDescription = null,
-                                                        tint = accentColor,
-                                                        modifier = Modifier.size(14.dp)
-                                                    )
-                                                }
-                                            }
-                                            Text(
-                                                text = layout.description,
-                                                fontSize = 11.sp,
-                                                color = TacticalTextMuted
-                                            )
-                                        }
-
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(if (isSelected) accentColor.copy(alpha = 0.2f) else TacticalSurfaceElevated)
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Text(
-                                                text = layout.priceDisplay,
-                                                fontSize = 9.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isSelected) accentColor else TacticalTextMuted,
-                                                fontFamily = FontFamily.Monospace
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     }
-                }
-            }
-        }
 
-        // =========================================================================
-        // SECTION: PRIVACY, E2EE SAFETY KEYS & EPHEMERAL TIMEOUTS
-        // =========================================================================
-        if (selectedCategory == SettingsCategory.ALL || selectedCategory == SettingsCategory.PRIVACY_SECURITY) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, TacticalCardBorder, RoundedCornerShape(16.dp))
-                        .testTag("settings_privacy_card"),
-                    colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-                ) {
-                    Column(
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Audio Routing (Earpiece vs Speakerphone)
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(TacticalSurfaceElevated)
+                            .padding(12.dp)
+                            .testTag("settings_audio_routing_row"),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Column(modifier = Modifier.weight(1f)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.Security,
-                                    contentDescription = "Privacy",
-                                    tint = TacticalAmber,
-                                    modifier = Modifier.size(20.dp)
+                                    imageVector = if (userIdentity.audioRoutingToEarpiece) Icons.Default.Hearing else Icons.Default.VolumeUp,
+                                    contentDescription = null,
+                                    tint = if (userIdentity.audioRoutingToEarpiece) TacticalCyan else accentColor,
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    text = "PRIVACY & ZERO-TRACE SECURITY",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextMuted,
-                                    fontFamily = FontFamily.Monospace
+                                    text = "Audio Output Device",
+                                    color = TacticalTextPrimary,
+                                    fontSize = 13.5.sp,
+                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
+                            Text(
+                                text = if (userIdentity.audioRoutingToEarpiece)
+                                    "Discreet Mode (Phone Earpiece)"
+                                else
+                                    "Loud Mode (Speakerphone)",
+                                color = TacticalTextMuted,
+                                fontSize = 11.sp
+                            )
+                        }
+                        Button(
+                            onClick = onToggleAudioRouting,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (userIdentity.audioRoutingToEarpiece) TacticalCyan else accentColor,
+                                contentColor = Color.Black
+                            ),
+                            modifier = Modifier
+                                .height(34.dp)
+                                .testTag("settings_audio_routing_switch_button")
+                        ) {
+                            Text(
+                                text = if (userIdentity.audioRoutingToEarpiece) "EARPIECE" else "SPEAKER",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Sound Profile Choices
+                    Text(
+                        text = "CHIME STYLE",
+                        color = TacticalTextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(
+                            listOf(
+                                PttSoundProfile.NEXTEL_TACTICAL,
+                                PttSoundProfile.RETRO_VHF,
+                                PttSoundProfile.CYBER_SYNTH,
+                                PttSoundProfile.STEALTH_PULSE
+                            )
+                        ) { prof ->
+                            val isSelected = userIdentity.soundProfile == prof
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(TacticalAmber.copy(alpha = 0.2f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) accentColor.copy(alpha = 0.2f) else TacticalSurfaceElevated)
+                                    .border(1.dp, if (isSelected) accentColor else TacticalCardBorder, RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        onSetSoundProfile(prof)
+                                        onPreviewSound(prof, true)
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 7.dp)
                             ) {
                                 Text(
-                                    text = "KYBER-1024",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalAmber,
-                                    fontFamily = FontFamily.Monospace
+                                    text = prof.title,
+                                    color = if (isSelected) accentColor else TacticalTextPrimary,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
                                 )
                             }
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                        // Zero Logs Toggle
+                    // Volume level
+                    Text(
+                        text = "SPEAKER VOLUME: ${(userIdentity.volumeLevel * 100).toInt()}%",
+                        color = TacticalTextMuted,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Slider(
+                        value = userIdentity.volumeLevel,
+                        onValueChange = { onSetVolumeLevel(it) },
+                        colors = SliderDefaults.colors(
+                            thumbColor = accentColor,
+                            activeTrackColor = accentColor,
+                            inactiveTrackColor = TacticalSurfaceElevated
+                        )
+                    )
+                }
+            }
+        }
+
+        // CARD 2.5: HARDWARE BUTTONS & VOLUME UP PTT
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(
+                        width = 1.dp,
+                        color = if (userIdentity.hardwareVolumePttEnabled) accentColor.copy(alpha = 0.6f) else TacticalCardBorder,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .testTag("hardware_volume_ptt_card"),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Zero-Logs Ephemeral Mode",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TacticalTextPrimary
-                                )
-                                Text(
-                                    text = "Auto-purges audio waveforms and transmission packets",
-                                    fontSize = 11.sp,
-                                    color = TacticalTextMuted
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(accentColor.copy(alpha = 0.15f))
+                                    .border(1.dp, accentColor, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.VolumeUp,
+                                    contentDescription = null,
+                                    tint = accentColor,
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Volume Up PTT Key",
+                                    color = TacticalTextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "Use physical Volume Up to transmit",
+                                    color = TacticalTextSecondary,
+                                    fontSize = 11.5.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = userIdentity.hardwareVolumePttEnabled,
+                            onCheckedChange = { onToggleHardwareVolumePtt() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = accentColor
+                            ),
+                            modifier = Modifier.testTag("settings_volume_ptt_switch")
+                        )
+                    }
+
+                    if (userIdentity.hardwareVolumePttEnabled) {
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Toggle Mode vs Momentary (Hold to talk) Mode
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(TacticalSurfaceElevated)
+                                .border(
+                                    width = 1.dp,
+                                    color = if (userIdentity.hardwareVolumePttToggleMode) PttNeonGreen.copy(alpha = 0.5f) else TacticalCardBorder,
+                                    shape = RoundedCornerShape(10.dp)
+                                )
+                                .padding(12.dp)
+                                .testTag("settings_volume_toggle_mode_row"),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "Toggle PTT Mode",
+                                        color = TacticalTextPrimary,
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(
+                                                if (userIdentity.hardwareVolumePttToggleMode)
+                                                    PttNeonGreen.copy(alpha = 0.2f)
+                                                else
+                                                    TacticalDarkBg
+                                            )
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = if (userIdentity.hardwareVolumePttToggleMode) "TOGGLE (TAP)" else "MOMENTARY (HOLD)",
+                                            color = if (userIdentity.hardwareVolumePttToggleMode) PttNeonGreen else TacticalTextMuted,
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(3.dp))
+                                Text(
+                                    text = if (userIdentity.hardwareVolumePttToggleMode)
+                                        "Tap Volume Up once to transmit, tap again to stop (hands-free)"
+                                    else
+                                        "Hold Volume Up to talk, release to stop transmitting (traditional PTT)",
+                                    color = TacticalTextMuted,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                             Switch(
-                                checked = userIdentity.zeroLogsEnabled,
-                                onCheckedChange = { onToggleZeroLogs() },
+                                checked = userIdentity.hardwareVolumePttToggleMode,
+                                onCheckedChange = { onToggleHardwareVolumePttToggleMode() },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = TacticalAmber,
-                                    checkedTrackColor = TacticalAmber.copy(alpha = 0.5f),
-                                    uncheckedThumbColor = TacticalTextMuted,
-                                    uncheckedTrackColor = TacticalSurfaceElevated
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = PttNeonGreen
                                 ),
-                                modifier = Modifier.testTag("zero_logs_toggle")
+                                modifier = Modifier.testTag("settings_volume_toggle_switch")
                             )
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
 
-                        // Ephemeral Timeout Selector
-                        Text(
-                            text = "AUTO-PURGE TIMEOUT DURATION",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TacticalTextMuted,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        val timeoutOptions = listOf(10, 30, 60, 300, 3600)
-                        LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.fillMaxWidth()
+                        // Status Info Banner
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(TacticalDarkBg)
+                                .border(1.dp, TacticalCardBorder, RoundedCornerShape(8.dp))
+                                .padding(10.dp)
                         ) {
-                            items(timeoutOptions) { sec ->
-                                val isSelected = userIdentity.ephemeralTimeoutSeconds == sec
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isSelected) TacticalAmber.copy(alpha = 0.25f) else TacticalDarkBg)
-                                        .border(1.dp, if (isSelected) TacticalAmber else TacticalCardBorder, RoundedCornerShape(8.dp))
-                                        .clickable { onSetEphemeralTimeout(sec) }
-                                        .padding(horizontal = 10.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        text = if (sec < 60) "${sec}s" else "${sec / 60}m",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) TacticalAmber else TacticalTextPrimary
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Divider(color = TacticalCardBorder)
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Terms & E2EE Safety Verification Buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = { onOpenTermsOfService() },
-                                colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("Terms & Safety", fontSize = 11.sp, color = TacticalTextPrimary)
-                            }
-
-                            Button(
-                                onClick = { onOpenNoiseCancelModal() },
-                                colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("DSP Filter Studio", fontSize = 11.sp, color = TacticalCyan)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Hearing,
+                                    contentDescription = null,
+                                    tint = if (userIdentity.hardwareVolumePttToggleMode) PttNeonGreen else accentColor,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = if (userIdentity.hardwareVolumePttToggleMode)
+                                        "ACTIVE: Tap phone Volume Up button once to begin transmitting, tap once more to release."
+                                    else
+                                        "ACTIVE: Press and hold phone Volume Up button to talk. Audio transmits while pressed.",
+                                    color = TacticalTextSecondary,
+                                    fontSize = 10.5.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
                             }
                         }
                     }
@@ -1325,166 +780,200 @@ fun SettingsScreen(
             }
         }
 
-        // =========================================================================
-        // SECTION: 24/7 SPECIALIST & AI ASSISTANCE DISPATCH
-        // =========================================================================
-        if (selectedCategory == SettingsCategory.ALL || selectedCategory == SettingsCategory.DIAGNOSTICS_LAB) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, TacticalCardBorder, RoundedCornerShape(16.dp))
-                        .testTag("support_settings_card"),
-                    colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+        // CARD 3: THEME & COLOR ACCENTS
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFFA855F7).copy(alpha = 0.15f))
+                                .border(1.dp, Color(0xFFA855F7), CircleShape),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.ColorLens,
+                                contentDescription = null,
+                                tint = Color(0xFFA855F7),
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "App Theme & Color",
+                                color = TacticalTextPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "Choose your favorite accent glow",
+                                color = TacticalTextSecondary,
+                                fontSize = 11.5.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(
+                            listOf(
+                                AppThemeScheme.TACTICAL_GREEN,
+                                AppThemeScheme.STEALTH_CYAN,
+                                AppThemeScheme.CYBER_AMBER,
+                                AppThemeScheme.CRIMSON_ALERT
+                            )
+                        ) { theme ->
+                            val isSelected = userIdentity.themeScheme == theme
+                            val col = Color(theme.primaryHex)
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(TacticalSurfaceElevated)
+                                    .border(
+                                        width = if (isSelected) 2.dp else 1.dp,
+                                        color = if (isSelected) col else TacticalCardBorder,
+                                        shape = RoundedCornerShape(10.dp)
+                                    )
+                                    .clickable { onSetThemeScheme(theme) }
+                                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(14.dp)
+                                            .clip(CircleShape)
+                                            .background(col)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = theme.title,
+                                        color = if (isSelected) col else TacticalTextPrimary,
+                                        fontSize = 12.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // CARD 3.5: WORKMANAGER BATTERY OPTIMIZATION & SLEEP MODE AUDIO
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .border(
+                        width = 1.dp,
+                        color = if (userIdentity.sleepModeBackgroundListeningEnabled) TacticalCyan.copy(alpha = 0.6f) else TacticalCardBorder,
+                        shape = RoundedCornerShape(16.dp)
+                    )
+                    .testTag("sleep_mode_audio_card"),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(TacticalCyan.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Icon(
-                                    imageVector = Icons.Default.SupportAgent,
-                                    contentDescription = "Support",
+                                    imageVector = Icons.Default.BatteryChargingFull,
+                                    contentDescription = "Sleep Mode Audio",
                                     tint = TacticalCyan,
                                     modifier = Modifier.size(20.dp)
                                 )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "SUPPORT & SPECIALIST DISPATCH",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextMuted,
-                                    fontFamily = FontFamily.Monospace
-                                )
                             }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(TacticalCyan.copy(alpha = 0.2f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
                                 Text(
-                                    text = if (tier == SubscriptionTier.FREE) "AI STUDIO ASSIST" else "24/7 LIVE PTT",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    text = "Sleep Mode Audio",
+                                    color = TacticalTextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = "WorkManager Battery Optimization",
                                     color = TacticalCyan,
-                                    fontFamily = FontFamily.Monospace
+                                    fontSize = 11.5.sp
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Text(
-                            text = if (tier == SubscriptionTier.FREE)
-                                "Connect to automated AI radio assistance for encryption keys, frequencies and squelch calibration. Upgrade to Tactical Pro to speak to live operators."
-                            else
-                                "Tune directly into the dedicated 24/7 TacOps Specialist Channel to speak directly with an authorized radio dispatcher.",
-                            fontSize = 12.sp,
-                            color = TacticalTextMuted
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Button(
-                            onClick = { onConnectToSupport() },
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (tier == SubscriptionTier.FREE) TacticalSurfaceElevated else TacticalCyan
+                        Switch(
+                            checked = userIdentity.sleepModeBackgroundListeningEnabled,
+                            onCheckedChange = { onToggleSleepModeListening() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color.White,
+                                checkedTrackColor = TacticalCyan
                             ),
-                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.testTag("sleep_mode_toggle_switch")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "Allows your device to hear incoming PTT voice transmissions even when the screen is off or in deep sleep. Uses Android WorkManager with power-efficient radio polling constraints to minimize battery consumption.",
+                        color = TacticalTextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Box(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("connect_support_ptt_btn")
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(TacticalSurfaceElevated)
+                                .padding(8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.HeadsetMic,
-                                contentDescription = null,
-                                tint = if (tier == SubscriptionTier.FREE) TacticalCyan else TacticalDarkBg,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (tier == SubscriptionTier.FREE) "Tune into AI Assistant PTT" else "Tune into Live Specialist Dispatch",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (tier == SubscriptionTier.FREE) TacticalCyan else TacticalDarkBg
-                            )
+                            Column {
+                                Text("SCHEDULE DISPATCHER", color = TacticalTextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text("Android WorkManager", color = TacticalTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                            }
                         }
-
-                        // Interactive Troubleshooting Accordions
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "INTERACTIVE RADIO GUIDES",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TacticalTextMuted,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        val topics = listOf(
-                            "Audio & Microphone Distortion Fix",
-                            "256-Bit E2EE Safety Key Verification",
-                            "Virtual Coins & Real Money Cash-Out Guide",
-                            "Military VHF Frequency Bandpass Setup"
-                        )
-
-                        topics.forEach { topic ->
-                            val isExpanded = selectedAiTroubleshootTopic == topic
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 3.dp)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .border(1.dp, if (isExpanded) TacticalCyan else TacticalCardBorder, RoundedCornerShape(8.dp))
-                                    .clickable { selectedAiTroubleshootTopic = if (isExpanded) null else topic }
-                                    .testTag("troubleshoot_topic_${topic.hashCode()}"),
-                                colors = CardDefaults.cardColors(containerColor = TacticalDarkBg)
-                            ) {
-                                Column(modifier = Modifier.padding(10.dp)) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = topic,
-                                            fontSize = 12.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = if (isExpanded) TacticalCyan else TacticalTextPrimary
-                                        )
-                                        Icon(
-                                            imageVector = if (isExpanded) Icons.Default.Check else Icons.Default.QuestionAnswer,
-                                            contentDescription = null,
-                                            tint = if (isExpanded) TacticalCyan else TacticalTextMuted,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                    }
-
-                                    AnimatedVisibility(visible = isExpanded) {
-                                        Column(modifier = Modifier.padding(top = 8.dp)) {
-                                            Text(
-                                                text = when (topic) {
-                                                    "Audio & Microphone Distortion Fix" -> "• Check Squelch threshold in Settings.\n• Ensure Noise Suppression mode is active (Crystal Studio or Tactical Radio).\n• Hold device 2-4 inches from mouth when pressing PTT."
-                                                    "256-Bit E2EE Safety Key Verification" -> "• Compare the 12-block safety key with your recipient.\n• Tap the verified badge to lock the cryptographic session.\n• Keys use post-quantum Kyber + AES-256 GCM authenticated stream."
-                                                    "Virtual Coins & Real Money Cash-Out Guide" -> "• Earn coins through worldwide room gifts, room hosting, or coin purchases.\n• 100 coins = \$1.00 USD cash-out rate with 0% platform fee.\n• Supports instant transfer to PayPal, Cash App, Direct Bank Wire ACH, and USDT crypto."
-                                                    else -> "• Channels use 462 MHz UHF/VHF low-latency frequencies.\n• Custom frequencies can be added via the Channels tab.\n• Emergency SOS frequency 462.6750 MHz bypasses noise gate."
-                                                },
-                                                fontSize = 11.sp,
-                                                color = TacticalTextSecondary,
-                                                lineHeight = 16.sp
-                                            )
-                                        }
-                                    }
-                                }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(TacticalSurfaceElevated)
+                                .padding(8.dp)
+                        ) {
+                            Column {
+                                Text("STANDBY STATUS", color = TacticalTextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (userIdentity.sleepModeBackgroundListeningEnabled) "Active • Standby Rx" else "Disabled",
+                                    color = if (userIdentity.sleepModeBackgroundListeningEnabled) TacticalCyan else TacticalTextMuted,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
                             }
                         }
                     }
@@ -1492,262 +981,85 @@ fun SettingsScreen(
             }
         }
 
-        // =========================================================================
-        // SECTION: DIAGNOSTICS, AUDIO LOOPBACK & FACTORY RESET
-        // =========================================================================
-        if (selectedCategory == SettingsCategory.ALL || selectedCategory == SettingsCategory.DIAGNOSTICS_LAB) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, TacticalCardBorder, RoundedCornerShape(16.dp))
-                        .testTag("settings_diagnostics_card"),
-                    colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-                ) {
-                    Column(
+        // CARD 5: HOW IT WORKS & RESET
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp)),
+                colors = CardDefaults.cardColors(containerColor = TacticalSurface)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.Default.HelpOutline,
+                            contentDescription = null,
+                            tint = TacticalCyan,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "How to Use InstaWire",
+                            color = TacticalTextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "1. Pick a channel from the Channels tab (Channel 1 is default).\n" +
+                               "2. Hold the big green button on the Talk screen while speaking.\n" +
+                               "3. Let go of the button to hear replies in real-time.",
+                        color = TacticalTextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = onResetSettingsToDefaults,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = TacticalSurfaceElevated,
+                            contentColor = TacticalTextSecondary
+                        ),
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp)
+                            .height(42.dp)
+                            .testTag("settings_reset_defaults_button")
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.Terminal,
-                                    contentDescription = "Diagnostics",
-                                    tint = PttNeonGreen,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "HARDWARE DIAGNOSTICS & SYSTEM",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TacticalTextMuted,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(PttNeonGreen.copy(alpha = 0.2f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = "DSP LAB",
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PttNeonGreen,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Audio Loopback Mic & DSP Test
-                        Button(
-                            onClick = { onRunAudioLoopbackTest() },
-                            enabled = !isLoopbackRecording,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isLoopbackRecording) PttHotRed else TacticalSurfaceElevated
-                            ),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("run_loopback_test_btn")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Mic,
-                                contentDescription = null,
-                                tint = if (isLoopbackRecording) Color.White else PttNeonGreen,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isLoopbackRecording) "Recording Mic Loopback (3s)..." else "Run Mic & DSP Audio Loopback Test",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isLoopbackRecording) Color.White else PttNeonGreen
-                            )
-                        }
-
-                        if (loopbackStatus != null) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = loopbackStatus,
-                                fontSize = 11.sp,
-                                color = TacticalCyan,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Low-latency network diagnostic
-                        Button(
-                            onClick = { onRunLatencyDiagnostic() },
-                            enabled = !isDiagnosticsRunning,
-                            colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .testTag("run_latency_test_btn")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Speed,
-                                contentDescription = null,
-                                tint = TacticalCyan,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (isDiagnosticsRunning) "Testing Mesh Ping..." else "Ping Mesh & Edge Relays (Sub-50ms Test)",
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TacticalCyan
-                            )
-                        }
-
-                        if (diagnosticsResult != null) {
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                text = diagnosticsResult,
-                                fontSize = 11.sp,
-                                color = TacticalTextSecondary,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Divider(color = TacticalCardBorder)
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Reset & Emergency Wipe buttons
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Button(
-                                onClick = { showResetConfirm = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, TacticalCardBorder),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = null,
-                                    tint = TacticalTextMuted,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Factory Reset", fontSize = 11.sp, color = TacticalTextPrimary)
-                            }
-
-                            Button(
-                                onClick = { showPanicConfirm = true },
-                                colors = ButtonDefaults.buttonColors(containerColor = PttHotRed.copy(alpha = 0.2f)),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, PttHotRed.copy(alpha = 0.6f)),
-                                shape = RoundedCornerShape(8.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.DeleteForever,
-                                    contentDescription = null,
-                                    tint = PttHotRed,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Panic Wipe", fontSize = 11.sp, color = PttHotRed, fontWeight = FontWeight.Bold)
-                            }
-                        }
-
-                        AnimatedVisibility(visible = showResetConfirm) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 10.dp)
-                                    .background(TacticalDarkBg, RoundedCornerShape(8.dp))
-                                    .padding(10.dp)
-                            ) {
-                                Text(
-                                    text = "Reset all audio, volume, squelch, sound profiles, and themes to default factory values?",
-                                    fontSize = 11.sp,
-                                    color = TacticalTextPrimary
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(
-                                        onClick = {
-                                            onResetSettingsToDefaults()
-                                            showResetConfirm = false
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = accentColor),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text("Confirm Reset", fontSize = 11.sp, color = TacticalDarkBg, fontWeight = FontWeight.Bold)
-                                    }
-                                    Button(
-                                        onClick = { showResetConfirm = false },
-                                        colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text("Cancel", fontSize = 11.sp, color = TacticalTextMuted)
-                                    }
-                                }
-                            }
-                        }
-
-                        AnimatedVisibility(visible = showPanicConfirm) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(top = 10.dp)
-                                    .background(PttHotRed.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-                                    .border(1.dp, PttHotRed, RoundedCornerShape(8.dp))
-                                    .padding(10.dp)
-                            ) {
-                                Text(
-                                    text = "⚠️ EMERGENCY PANIC WIPE: All transmission logs, cached messages, and safety keys will be irrevocably deleted.",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = PttHotRed
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    Button(
-                                        onClick = {
-                                            onPanicWipeAllData()
-                                            showPanicConfirm = false
-                                        },
-                                        colors = ButtonDefaults.buttonColors(containerColor = PttHotRed),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text("EXECUTE WIPE", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
-                                    }
-                                    Button(
-                                        onClick = { showPanicConfirm = false },
-                                        colors = ButtonDefaults.buttonColors(containerColor = TacticalSurfaceElevated),
-                                        shape = RoundedCornerShape(6.dp)
-                                    ) {
-                                        Text("Cancel", fontSize = 11.sp, color = TacticalTextMuted)
-                                    }
-                                }
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Reset",
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Reset All Settings to Default",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
             }
         }
 
         item {
-            Spacer(modifier = Modifier.height(24.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "InstaWire • Simple Push-to-Talk Walkie Talkie",
+                    color = TacticalTextMuted,
+                    fontSize = 11.sp
+                )
+            }
         }
     }
 }

@@ -125,22 +125,21 @@ fun ContactsScreen(
                 ) {
                     Column {
                         Text(
-                            text = "DIRECT 1-ON-1 WIRE",
+                            text = "Friends & Contacts",
                             color = TacticalTextPrimary,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 18.sp,
-                            fontFamily = FontFamily.Monospace
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp
                         )
                         Text(
-                            text = "Verified Users & Ephemeral Lines",
+                            text = "Talk directly 1-on-1 with friends and family",
                             color = TacticalTextSecondary,
-                            fontSize = 11.sp
+                            fontSize = 12.sp
                         )
                     }
 
                     Button(
                         onClick = onOpenAddContact,
-                        shape = RoundedCornerShape(8.dp),
+                        shape = RoundedCornerShape(10.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = PttNeonGreen,
                             contentColor = TacticalDarkBg
@@ -154,29 +153,27 @@ fun ContactsScreen(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "ADD CONTACT",
+                            text = "Add Friend",
                             fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace
+                            fontSize = 12.sp
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Menu Option Banner: Generate Temporary Burner (Firebase Functions Provisioning)
+                // Verified Direct Voice Banner
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
                         .background(
                             Brush.linearGradient(
-                                listOf(Color(0xFF2E2305), TacticalSurface)
+                                listOf(Color(0xFF0F2418), TacticalSurface)
                             )
                         )
-                        .border(1.dp, BurnerGold.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                        .clickable { onOpenBurnerProvisioning() }
-                        .testTag("generate_burner_menu_banner"),
+                        .border(1.dp, PttNeonGreen.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        .testTag("e2ee_security_banner"),
                     colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                 ) {
                     Row(
@@ -191,28 +188,28 @@ fun ContactsScreen(
                                 modifier = Modifier
                                     .size(34.dp)
                                     .clip(CircleShape)
-                                    .background(BurnerGold.copy(alpha = 0.2f))
-                                    .border(1.dp, BurnerGold, CircleShape),
+                                    .background(PttNeonGreen.copy(alpha = 0.2f))
+                                    .border(1.dp, PttNeonGreen, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Whatshot,
-                                    contentDescription = "Burner Option",
-                                    tint = BurnerGold,
+                                    imageVector = Icons.Default.Shield,
+                                    contentDescription = "Security Status",
+                                    tint = PttNeonGreen,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }
                             Spacer(modifier = Modifier.width(10.dp))
                             Column {
                                 Text(
-                                    text = "PROVISION TEMPORARY BURNER",
-                                    color = BurnerGold,
+                                    text = "ENCRYPTED DIRECT RADIO",
+                                    color = PttNeonGreen,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 11.sp,
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Text(
-                                    text = "Firebase Functions anonymous provisioning",
+                                    text = "100% Free · End-to-End Encrypted Voice",
                                     color = TacticalCyan,
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace
@@ -223,11 +220,11 @@ fun ContactsScreen(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(6.dp))
-                                .background(BurnerGold)
+                                .background(PttNeonGreen)
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(
-                                text = "GENERATE",
+                                text = "ACTIVE",
                                 color = TacticalDarkBg,
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Black,

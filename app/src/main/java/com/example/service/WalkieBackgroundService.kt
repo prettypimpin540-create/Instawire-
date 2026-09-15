@@ -248,19 +248,23 @@ class WalkieBackgroundService : Service() {
     }
 
     private fun startForegroundServiceNotification(statusText: String) {
-        val notification = buildNotification(
-            title = "InstaWire PTT Live Transceiver",
-            text = statusText
-        )
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+        try {
+            val notification = buildNotification(
+                title = "InstaWire PTT Live Transceiver",
+                text = statusText
             )
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        } catch (e: Throwable) {
+            android.util.Log.w("WalkieBackgroundService", "startForeground safely bypassed: ${e.message}")
         }
     }
 
@@ -327,19 +331,27 @@ class WalkieBackgroundService : Service() {
         var isRunning = false
 
         fun start(context: Context) {
-            val intent = Intent(context, WalkieBackgroundService::class.java)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                val intent = Intent(context, WalkieBackgroundService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Throwable) {
+                android.util.Log.w("WalkieBackgroundService", "Cannot start background service in current environment: ${e.message}")
             }
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, WalkieBackgroundService::class.java).apply {
-                action = ACTION_STOP_SERVICE
+            try {
+                val intent = Intent(context, WalkieBackgroundService::class.java).apply {
+                    action = ACTION_STOP_SERVICE
+                }
+                context.startService(intent)
+            } catch (e: Throwable) {
+                android.util.Log.w("WalkieBackgroundService", "Cannot stop background service: ${e.message}")
             }
-            context.startService(intent)
         }
     }
 }

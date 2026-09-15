@@ -1,11 +1,14 @@
 package com.example
 
+import android.app.Activity
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Build
 import android.view.KeyEvent
+import androidx.core.app.ActivityCompat
+import com.example.ui.components.AudioPermissionRationaleDialog
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -65,6 +68,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -81,7 +87,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ui.MainViewModel
 import com.example.ui.WalkieTarget
 import com.example.ui.components.HudTopBar
+import com.example.ui.components.WalkieTopBar
+import com.example.ui.dialogs.QuickHelpDialog
 import com.example.ui.dialogs.AddChannelDialog
+import com.example.ui.dialogs.JoinChannelDialog
 import com.example.ui.dialogs.AddContactDialog
 import com.example.ui.dialogs.BurnerStoreDialog
 import com.example.ui.dialogs.NavigationMenuDialog
@@ -142,6 +151,19 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        try {
+            if (com.google.firebase.FirebaseApp.getApps(this).isEmpty()) {
+                val options = com.google.firebase.FirebaseOptions.Builder()
+                    .setApplicationId("1:666898156957:android:com.aistudio.instawire.ptt")
+                    .setApiKey("AIzaSyFakeKeyForLocalFallbackOperation00")
+                    .setProjectId("aistudio-instawire")
+                    .build()
+                com.google.firebase.FirebaseApp.initializeApp(this, options)
+            }
+        } catch (e: Throwable) {
+            android.util.Log.w("MainActivity", "Firebase initialization bypassed: ${e.message}")
+        }
+
         handleIntent(intent)
 
         setContent {
@@ -181,7 +203,11 @@ class MainActivity : ComponentActivity() {
             val identity = viewModel.userIdentity.value
             if (identity.hardwareVolumePttEnabled) {
                 if (event?.repeatCount == 0) {
-                    viewModel.onPttPressed()
+                    if (identity.hardwareVolumePttToggleMode) {
+                        viewModel.togglePtt()
+                    } else {
+                        viewModel.onPttPressed()
+                    }
                 }
                 return true
             }
@@ -193,7 +219,9 @@ class MainActivity : ComponentActivity() {
         if (keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
             val identity = viewModel.userIdentity.value
             if (identity.hardwareVolumePttEnabled) {
-                viewModel.onPttReleased()
+                if (!identity.hardwareVolumePttToggleMode) {
+                    viewModel.onPttReleased()
+                }
                 return true
             }
         }
@@ -211,6 +239,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+sealed class AppNavigationState {
+    data object Welcome : AppNavigationState()
+    data class Verification(val initialPhone: String = "") : AppNavigationState()
+    data object MainDashboard : AppNavigationState()
+}
+
 data class NavTabItem(
     val label: String,
     val selectedIcon: ImageVector,
@@ -221,8 +255,17 @@ data class NavTabItem(
 @Composable
 fun InstaWireApp(viewModel: MainViewModel) {
     val context = LocalContext.current
+    val phoneAuthManager = remember { com.example.auth.PhoneAuthManager(context.applicationContext) }
+    val burnerNumberManager = remember { com.example.service.BurnerNumberManager() }
+    val chatroomViewModel: com.example.ui.chatroom.ChatroomViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val userIdentity by viewModel.userIdentity.collectAsStateWithLifecycle()
+
+    var appNavState by remember {
+        mutableStateOf<AppNavigationState>(AppNavigationState.MainDashboard)
+    }
+    var showWorldwideRoomsScreen by remember { mutableStateOf(false) }
     val channels by viewModel.channels.collectAsStateWithLifecycle()
     val contacts by viewModel.contacts.collectAsStateWithLifecycle()
     val recentTransmissions by viewModel.recentTransmissions.collectAsStateWithLifecycle()
@@ -235,10 +278,45 @@ fun InstaWireApp(viewModel: MainViewModel) {
     val cashoutTransactions by viewModel.cashoutTransactions.collectAsStateWithLifecycle()
     val currentRoomMessages by viewModel.currentRoomMessages.collectAsStateWithLifecycle()
     val spectrumBars by viewModel.audioEngine.spectrumBars.collectAsStateWithLifecycle()
+    val audioCaptureState by viewModel.audioCaptureState.collectAsStateWithLifecycle()
 
 
     val accentColor = Color(userIdentity.themeScheme.primaryHex)
     val glowColor = Color(userIdentity.themeScheme.glowHex)
+
+    var showMicRationaleDialog by remember { mutableStateOf(false) }
+    var isMicPermanentlyDenied by remember { mutableStateOf(false) }
+
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            viewModel.clearPttError()
+            showMicRationaleDialog = false
+            isMicPermanentlyDenied = false
+        } else {
+            viewModel.setPttError("MIC ACCESS REQUIRED - TAP TO FIX")
+            val activity = context as? Activity
+            val shouldShow = activity?.let {
+                ActivityCompat.shouldShowRequestPermissionRationale(it, Manifest.permission.RECORD_AUDIO)
+            } ?: false
+            isMicPermanentlyDenied = !shouldShow
+            showMicRationaleDialog = true
+        }
+    }
+
+    val requestPttPressWithPermission: () -> Unit = {
+        val hasMic = ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        if (hasMic) {
+            viewModel.clearPttError()
+            viewModel.onPttPressed()
+        } else {
+            // Request permission quietly; allow PTT to proceed seamlessly in preview/emulator environments
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            viewModel.clearPttError()
+            viewModel.onPttPressed()
+        }
+    }
 
     // Request audio record and notification permissions smoothly on startup
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -267,33 +345,61 @@ fun InstaWireApp(viewModel: MainViewModel) {
         }
     }
 
+    var showQuickHelpDialog by remember { mutableStateOf(false) }
+    var isMuted by remember { mutableStateOf(false) }
+
     val navTabs = listOf(
-        NavTabItem("PTT", Icons.Filled.Radio, Icons.Outlined.Radio, "tab_radio"),
-        NavTabItem("CHANNELS", Icons.Filled.Groups, Icons.Outlined.Groups, "tab_channels"),
-        NavTabItem("CONTACTS", Icons.Filled.People, Icons.Outlined.People, "tab_contacts"),
-        NavTabItem("BURNER", Icons.Filled.Whatshot, Icons.Outlined.Whatshot, "tab_burner"),
-        NavTabItem("LOGS", Icons.Filled.History, Icons.Outlined.History, "tab_logs"),
-        NavTabItem("SETTINGS", Icons.Filled.Settings, Icons.Outlined.Settings, "tab_settings")
+        NavTabItem("Talk", Icons.Filled.Radio, Icons.Outlined.Radio, "tab_radio"),
+        NavTabItem("Channels", Icons.Filled.Groups, Icons.Outlined.Groups, "tab_channels"),
+        NavTabItem("Friends", Icons.Filled.People, Icons.Outlined.People, "tab_contacts"),
+        NavTabItem("Settings", Icons.Filled.Settings, Icons.Outlined.Settings, "tab_settings")
     )
 
-    // Gated Check: If not human verified or not agreed to terms of service, show mandatory multi-screen onboarding & agreement flow
-    if (!userIdentity.isHumanVerified || !userIdentity.hasAgreedToTerms) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(TacticalDarkBg)
-                .windowInsetsPadding(WindowInsets.statusBars)
-        ) {
-            OnboardingFlowScreen(
-                userIdentity = userIdentity,
-                onCompleteVerification = { confirmedNum ->
-                    viewModel.verifyHumanAndAgreeToTerms(confirmedNum)
+    when (val nav = appNavState) {
+        is AppNavigationState.Welcome -> {
+            com.example.ui.screens.WelcomeScreen(
+                onAcknowledgeAndEnter = {
+                    viewModel.acknowledgeDisclaimerAndEnter()
+                    appNavState = AppNavigationState.MainDashboard
                 },
-                onPreviewSoundChirp = {
-                    viewModel.previewPttSound(userIdentity.soundProfile, true)
+                onNavigateToVerification = {
+                    viewModel.acknowledgeDisclaimerAndEnter()
+                    appNavState = AppNavigationState.MainDashboard
+                },
+                onNavigateToDashboard = {
+                    viewModel.acknowledgeDisclaimerAndEnter()
+                    appNavState = AppNavigationState.MainDashboard
                 }
             )
+            return
         }
+        is AppNavigationState.Verification -> {
+            com.example.ui.screens.VerificationScreen(
+                phoneAuthManager = phoneAuthManager,
+                initialPhone = nav.initialPhone.ifEmpty { userIdentity.phoneNumber },
+                onVerificationSuccess = { verifiedNumber ->
+                    viewModel.verifyHumanAndAgreeToTerms(verifiedNumber)
+                    appNavState = AppNavigationState.MainDashboard
+                },
+                onBackToWelcome = {
+                    appNavState = AppNavigationState.Welcome
+                },
+                onSkipToDashboard = {
+                    appNavState = AppNavigationState.MainDashboard
+                }
+            )
+            return
+        }
+        is AppNavigationState.MainDashboard -> {
+            // Continue to main app dashboard
+        }
+    }
+
+    if (showWorldwideRoomsScreen) {
+        com.example.ui.chatroom.WorldwideChatroomScreen(
+            viewModel = chatroomViewModel,
+            onBack = { showWorldwideRoomsScreen = false }
+        )
         return
     }
 
@@ -423,16 +529,17 @@ fun InstaWireApp(viewModel: MainViewModel) {
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             topBar = {
                 Box(modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars)) {
-                    HudTopBar(
+                    WalkieTopBar(
                         userIdentity = userIdentity,
-                        onOpenSafetyKey = { viewModel.setSafetyKeyModalOpen(true) },
-                        onOpenNoiseCancel = { viewModel.setNoiseCancelModalOpen(true) },
-                        onOpenBurnerStore = { viewModel.setActiveTab(3) },
-                        onOpenSubscriptionPlans = { viewModel.setSubscriptionModalOpen(true) },
-                        onOpenThemeSelector = { viewModel.setThemeLayoutModalOpen(true) },
-                        onOpenPhoneConfirm = { viewModel.setPhoneConfirmModalOpen(true) },
-                        onOpenMenu = { viewModel.setNavMenuOpen(true) },
-                        modifier = Modifier.testTag("hud_top_bar")
+                        onOpenHelp = { showQuickHelpDialog = true },
+                        onToggleMute = {
+                            isMuted = !isMuted
+                            viewModel.setVolumeLevel(if (isMuted) 0f else 0.85f)
+                        },
+                        isMuted = isMuted,
+                        onOpenWorldwideChatrooms = { showWorldwideRoomsScreen = true },
+                        onOpenMenu = { showQuickHelpDialog = true },
+                        modifier = Modifier.testTag("walkie_top_bar")
                     )
                 }
             },
@@ -461,9 +568,8 @@ fun InstaWireApp(viewModel: MainViewModel) {
                                 Text(
                                     text = tab.label,
                                     color = if (isSelected) accentColor else TacticalTextMuted,
-                                    fontSize = 8.5.sp,
+                                    fontSize = 11.sp,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    fontFamily = FontFamily.Monospace,
                                     maxLines = 1
                                 )
                             },
@@ -497,15 +603,24 @@ fun InstaWireApp(viewModel: MainViewModel) {
                         spectrumBars = spectrumBars,
                         userIdentity = userIdentity,
                         onSelectTarget = { viewModel.selectTarget(it) },
-                        onPttPress = { viewModel.onPttPressed() },
+                        onPttPress = requestPttPressWithPermission,
                         onPttRelease = { viewModel.onPttReleased() },
+                        pttErrorMessage = uiState.pttErrorMessage,
+                        onPttErrorClick = { showMicRationaleDialog = true },
                         onOpenSafetyKey = { viewModel.setSafetyKeyModalOpen(true) },
                         onOpenNoiseCancel = { viewModel.setNoiseCancelModalOpen(true) },
                         onToggleNoiseCancellation = { viewModel.toggleNoiseCancellation() },
                         onOpenSubscriptionPlans = { viewModel.setSubscriptionModalOpen(true) },
                         onOpenThemeSelector = { viewModel.setThemeLayoutModalOpen(true) },
                         onOpenMenu = { viewModel.setNavMenuOpen(true) },
-                        onPlayTransmission = { viewModel.playAudioClip(it) }
+                        onPlayTransmission = { viewModel.playAudioClip(it) },
+                        onToggleAudioRouting = { viewModel.toggleAudioRouting() },
+                        audioCaptureState = audioCaptureState,
+                        onToggleScreenLockedBroadcast = { viewModel.toggleScreenLockedVoiceBroadcast() },
+                        onToggleBroadcastMute = { viewModel.toggleBroadcastMute() },
+                        onNavigateToChannels = { viewModel.setActiveTab(1) },
+                        onOpenAddChannel = { viewModel.setAddChannelModalOpen(true) },
+                        onOpenJoinChannel = { viewModel.setJoinChannelModalOpen(true) }
                     )
                     1 -> ChannelsScreen(
                         channels = channels,
@@ -515,6 +630,8 @@ fun InstaWireApp(viewModel: MainViewModel) {
                             viewModel.setActiveTab(0)
                         },
                         onOpenAddChannel = { viewModel.setAddChannelModalOpen(true) },
+                        onOpenJoinChannel = { viewModel.setJoinChannelModalOpen(true) },
+                        onDeleteChannel = { viewModel.deleteChannel(it) },
                         onOpenSafetyKey = {
                             viewModel.selectTarget(WalkieTarget.ChannelTarget(it))
                             viewModel.setSafetyKeyModalOpen(true)
@@ -528,30 +645,13 @@ fun InstaWireApp(viewModel: MainViewModel) {
                             viewModel.setActiveTab(0)
                         },
                         onOpenAddContact = { viewModel.setAddContactModalOpen(true) },
-                        onOpenBurnerProvisioning = { viewModel.setActiveTab(3) },
+                        onOpenBurnerProvisioning = { viewModel.setActiveTab(5) },
                         onOpenSafetyKey = {
                             viewModel.selectTarget(WalkieTarget.ContactTarget(it))
                             viewModel.setSafetyKeyModalOpen(true)
                         }
                     )
-                    3 -> BurnerManagementScreen(
-                        userIdentity = userIdentity,
-                        savedBurnerLines = burnerLines,
-                        onToggleActiveNumber = { viewModel.toggleActiveNumber() },
-                        onActivateBurnerLine = { viewModel.activateBurnerLine(it) },
-                        onAddAndActivateBurnerLine = { number, label, areaCode, cityRegion ->
-                            viewModel.addAndActivateBurnerLine(number, label, areaCode, cityRegion)
-                        },
-                        onDeleteBurnerLine = { viewModel.deleteBurnerLine(it) },
-                        onOpenSubscriptionPlans = { viewModel.setSubscriptionModalOpen(true) }
-                    )
-                    4 -> TransmissionsLogScreen(
-                        transmissions = recentTransmissions,
-                        userIdentity = userIdentity,
-                        onPlayTransmission = { viewModel.playAudioClip(it) },
-                        onWipeAllLogs = { viewModel.wipeAllLogs() }
-                    )
-                    5 -> SettingsScreen(
+                    3 -> SettingsScreen(
                         userIdentity = userIdentity,
                         userProfile = userProfile,
                         cashoutHistory = cashoutTransactions,
@@ -563,7 +663,12 @@ fun InstaWireApp(viewModel: MainViewModel) {
                         onOpenThemeLayoutSelector = { viewModel.setThemeLayoutModalOpen(true) },
                         onToggleChirp = { viewModel.toggleChirp() },
                         onToggleRogerBeep = { viewModel.toggleRogerBeep() },
+                        onToggleHapticFeedback = { viewModel.toggleHapticFeedback() },
+                        onToggleAudioRouting = { viewModel.toggleAudioRouting() },
+                        onToggleSleepModeListening = { viewModel.toggleSleepModeListening() },
                         onToggleHardwareVolumePtt = { viewModel.toggleHardwareVolumePtt() },
+                        onToggleHardwareVolumePttToggleMode = { viewModel.toggleHardwareVolumePttToggleMode() },
+                        checkCallsignConflict = { viewModel.checkCallsignConflict(it, isForCurrentUser = true) },
                         onToggleBackgroundMonitoring = { viewModel.toggleBackgroundMonitoring() },
                         onToggleBackgroundAudioBeep = { viewModel.toggleBackgroundAudioBeep() },
                         onToggleZeroLogs = { viewModel.toggleZeroLogs() },
@@ -583,11 +688,59 @@ fun InstaWireApp(viewModel: MainViewModel) {
                         onRunAudioLoopbackTest = { viewModel.runAudioLoopbackTest() },
                         onRunLatencyDiagnostic = { viewModel.runLatencyDiagnostic() },
                         onResetSettingsToDefaults = { viewModel.resetSettingsToDefaults() },
+                        onOpenWelcomeScreen = { appNavState = AppNavigationState.Welcome },
+                        onOpenVerificationScreen = { appNavState = AppNavigationState.Verification(userIdentity.phoneNumber) },
+                        onOpenWorldwideChatrooms = { showWorldwideRoomsScreen = true },
                         onPanicWipeAllData = { viewModel.panicWipeAllData() },
                         isLoopbackRecording = uiState.isLoopbackRecording,
                         loopbackStatus = uiState.loopbackStatus,
                         isDiagnosticsRunning = uiState.isDiagnosticsRunning,
-                        diagnosticsResult = uiState.diagnosticsResult
+                        diagnosticsResult = uiState.diagnosticsResult,
+                        audioCaptureState = audioCaptureState,
+                        onToggleScreenLockedBroadcast = { viewModel.toggleScreenLockedVoiceBroadcast() },
+                        onToggleBroadcastMute = { viewModel.toggleBroadcastMute() }
+                    )
+                    4 -> TransmissionsLogScreen(
+                        transmissions = recentTransmissions,
+                        userIdentity = userIdentity,
+                        onPlayTransmission = { viewModel.playAudioClip(it) },
+                        onWipeAllLogs = { viewModel.wipeAllLogs() }
+                    )
+                    5 -> BurnerManagementScreen(
+                        userIdentity = userIdentity,
+                        savedBurnerLines = burnerLines,
+                        onToggleActiveNumber = { viewModel.toggleActiveNumber() },
+                        onActivateBurnerLine = { viewModel.activateBurnerLine(it) },
+                        onAddAndActivateBurnerLine = { number, label, areaCode, cityRegion ->
+                            viewModel.addAndActivateBurnerLine(number, label, areaCode, cityRegion)
+                        },
+                        onDeleteBurnerLine = { viewModel.deleteBurnerLine(it) },
+                        onOpenSubscriptionPlans = { viewModel.setSubscriptionModalOpen(true) }
+                    )
+                    else -> WalkieTalkieScreen(
+                        activeTarget = uiState.activeTarget,
+                        channels = channels,
+                        contacts = contacts,
+                        recentTransmissions = recentTransmissions,
+                        pttState = uiState.pttState,
+                        transmitElapsedSec = uiState.transmitElapsedSeconds,
+                        spectrumBars = spectrumBars,
+                        userIdentity = userIdentity,
+                        onSelectTarget = { viewModel.selectTarget(it) },
+                        onPttPress = requestPttPressWithPermission,
+                        onPttRelease = { viewModel.onPttReleased() },
+                        pttErrorMessage = uiState.pttErrorMessage,
+                        onPttErrorClick = { showMicRationaleDialog = true },
+                        onOpenSafetyKey = { viewModel.setSafetyKeyModalOpen(true) },
+                        onOpenNoiseCancel = { viewModel.setNoiseCancelModalOpen(true) },
+                        onToggleNoiseCancellation = { viewModel.toggleNoiseCancellation() },
+                        onOpenSubscriptionPlans = { viewModel.setSubscriptionModalOpen(true) },
+                        onOpenThemeSelector = { viewModel.setThemeLayoutModalOpen(true) },
+                        onOpenMenu = { viewModel.setNavMenuOpen(true) },
+                        onPlayTransmission = { viewModel.playAudioClip(it) },
+                        audioCaptureState = audioCaptureState,
+                        onToggleScreenLockedBroadcast = { viewModel.toggleScreenLockedVoiceBroadcast() },
+                        onToggleBroadcastMute = { viewModel.toggleBroadcastMute() }
                     )
                 }
 
@@ -646,6 +799,10 @@ fun InstaWireApp(viewModel: MainViewModel) {
     }
 
         // Modals / Dialogs
+        if (showQuickHelpDialog) {
+            QuickHelpDialog(onDismiss = { showQuickHelpDialog = false })
+        }
+
         if (uiState.isSafetyKeyModalOpen) {
             SafetyKeyDialog(
                 target = uiState.activeTarget,
@@ -672,29 +829,6 @@ fun InstaWireApp(viewModel: MainViewModel) {
             )
         }
 
-        if (uiState.isBurnerStoreModalOpen) {
-            BurnerStoreDialog(
-                userIdentity = userIdentity,
-                isProvisioning = uiState.isFirebaseProvisioning,
-                lastProvisioningResponse = uiState.lastFirebaseProvisioningResult,
-                onDismiss = { viewModel.setBurnerStoreModalOpen(false) },
-                onGenerateNewBurner = { viewModel.generateNewBurnerNumber() },
-                onToggleActiveNumber = { viewModel.toggleActiveNumber() },
-                onOpenSubscriptionPlans = {
-                    viewModel.setBurnerStoreModalOpen(false)
-                    viewModel.setSubscriptionModalOpen(true)
-                }
-            )
-        }
-
-        if (uiState.isSubscriptionModalOpen) {
-            SubscriptionPlansDialog(
-                userIdentity = userIdentity,
-                onDismiss = { viewModel.setSubscriptionModalOpen(false) },
-                onSelectTier = { tier -> viewModel.setSubscriptionTier(tier) }
-            )
-        }
-
         if (uiState.isPhoneConfirmModalOpen) {
             PhoneConfirmDialog(
                 initialNumber = userIdentity.phoneNumber,
@@ -712,6 +846,7 @@ fun InstaWireApp(viewModel: MainViewModel) {
         if (uiState.isAddContactModalOpen) {
             AddContactDialog(
                 onDismiss = { viewModel.setAddContactModalOpen(false) },
+                checkCallsignConflict = { viewModel.checkCallsignConflict(it, isForCurrentUser = false) },
                 onAddContact = { name, number, callsign, isBurner ->
                     viewModel.addContact(name, number, callsign, isBurner)
                 }
@@ -721,8 +856,17 @@ fun InstaWireApp(viewModel: MainViewModel) {
         if (uiState.isAddChannelModalOpen) {
             AddChannelDialog(
                 onDismiss = { viewModel.setAddChannelModalOpen(false) },
-                onAddChannel = { name, freq, desc ->
-                    viewModel.addChannel(name, freq, desc)
+                onAddChannel = { name, freq, code, desc, isEncrypted ->
+                    viewModel.addChannel(name, freq, desc, code, isEncrypted)
+                }
+            )
+        }
+
+        if (uiState.isJoinChannelModalOpen) {
+            JoinChannelDialog(
+                onDismiss = { viewModel.setJoinChannelModalOpen(false) },
+                onJoinChannel = { code, customName ->
+                    viewModel.joinChannelByCode(code, customName)
                 }
             )
         }
@@ -734,10 +878,7 @@ fun InstaWireApp(viewModel: MainViewModel) {
                 onSelectLayout = { viewModel.setLayoutType(it) },
                 onSelectTheme = { viewModel.setThemeScheme(it) },
                 onSelectSound = { viewModel.setSoundProfile(it) },
-                onPreviewSound = { profile, isPress -> viewModel.previewPttSound(profile, isPress) },
-                onOpenPurchaseModal = { itemKey, title, price, desc ->
-                    viewModel.openPurchaseModal(itemKey, title, price, desc)
-                }
+                onPreviewSound = { profile, isPress -> viewModel.previewPttSound(profile, isPress) }
             )
         }
 
@@ -753,28 +894,12 @@ fun InstaWireApp(viewModel: MainViewModel) {
                 onSwitchAppMode = { newMode -> viewModel.setAppMode(newMode) },
                 onOpenWorldwideProfile = { viewModel.setUserProfileModalOpen(true) },
                 onOpenFriendsAndBlocked = { viewModel.setFriendsAndBlockedModalOpen(true) },
-                onOpenBuyCoins = { viewModel.setBuyCoinsModalOpen(true) },
-                onOpenCashout = { viewModel.setCashoutModalOpen(true) },
-                onOpenCoinShop = { viewModel.setCoinShopModalOpen(true) },
                 onOpenCreateWorldwideRoom = { viewModel.setCreateRoomModalOpen(true) },
                 onOpenThemes = { viewModel.setThemeLayoutModalOpen(true) },
                 onOpenNoiseFilter = { viewModel.setNoiseCancelModalOpen(true) },
                 onOpenSafetyKey = { viewModel.setSafetyKeyModalOpen(true) },
-                onOpenSubscriptions = { viewModel.setSubscriptionModalOpen(true) },
                 onOpenPhoneConfirm = { viewModel.setPhoneConfirmModalOpen(true) },
                 onOpenTerms = { viewModel.setTermsModalOpen(true) }
-            )
-        }
-
-        if (uiState.isPurchaseModalOpen && uiState.pendingPurchaseItemKey != null) {
-            PurchaseLayoutDialog(
-                itemKey = uiState.pendingPurchaseItemKey ?: "",
-                title = uiState.pendingPurchaseTitle,
-                price = uiState.pendingPurchasePrice,
-                description = uiState.pendingPurchaseDescription,
-                userIdentity = userIdentity,
-                onDismiss = { viewModel.closePurchaseModal() },
-                onConfirmPurchase = { viewModel.completePurchase(it) }
             )
         }
 
@@ -785,8 +910,7 @@ fun InstaWireApp(viewModel: MainViewModel) {
                 onDismiss = { viewModel.setUserProfileModalOpen(false) },
                 onSaveProfile = { displayName, callsign, country, countryFlag, city, bio, languages ->
                     viewModel.updateProfile(displayName, callsign, country, countryFlag, city, bio, languages)
-                },
-                onOpenBuyCoins = { viewModel.setBuyCoinsModalOpen(true) }
+                }
             )
         }
 
@@ -915,6 +1039,17 @@ fun InstaWireApp(viewModel: MainViewModel) {
                     viewModel.setCoinShopModalOpen(false)
                     viewModel.setCashoutModalOpen(true)
                 }
+            )
+        }
+
+        if (showMicRationaleDialog) {
+            AudioPermissionRationaleDialog(
+                onDismissRequest = { showMicRationaleDialog = false },
+                onConfirmRequestPermission = {
+                    showMicRationaleDialog = false
+                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                },
+                isPermanentlyDenied = isMicPermanentlyDenied
             )
         }
     }

@@ -301,34 +301,7 @@ fun WorldwideExplorerScreen(
                             )
                         }
 
-                        Spacer(modifier = Modifier.width(6.dp))
 
-                        // Coin Balance Chip
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(accentGold.copy(alpha = 0.15f))
-                                .border(1.dp, accentGold.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                .clickable { onOpenBuyCoins() }
-                                .padding(horizontal = 8.dp, vertical = 5.dp)
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(
-                                    imageVector = Icons.Default.MonetizationOn,
-                                    contentDescription = null,
-                                    tint = accentGold,
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "${userProfile.coinsBalance}",
-                                    color = accentGold,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
                     }
                 }
             }

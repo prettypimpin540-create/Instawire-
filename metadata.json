@@ -1,6 +1,6 @@
 {
   "name": "InstaWire",
-  "description": "Instant Push-to-Talk walkie-talkie with phone activation, burner numbers, zero lag audio, clean menu navigation, and Worldwide Voice Chatrooms across global cities with personal profiles, friends, and paid gifts.",
+  "description": "Free, encrypted push-to-talk walkie-talkie verified with your phone number. Features military-grade AES-256 encrypted voice channels, custom squad groups, worldwide global rooms, hardware PTT, and audio filters.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

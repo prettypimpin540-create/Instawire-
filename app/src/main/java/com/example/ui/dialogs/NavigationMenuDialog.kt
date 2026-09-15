@@ -101,14 +101,10 @@ fun NavigationMenuDialog(
     onSwitchAppMode: (AppMode) -> Unit = {},
     onOpenWorldwideProfile: () -> Unit = {},
     onOpenFriendsAndBlocked: () -> Unit = {},
-    onOpenBuyCoins: () -> Unit = {},
-    onOpenCashout: () -> Unit = {},
-    onOpenCoinShop: () -> Unit = {},
     onOpenCreateWorldwideRoom: () -> Unit = {},
     onOpenThemes: () -> Unit,
     onOpenNoiseFilter: () -> Unit,
     onOpenSafetyKey: () -> Unit,
-    onOpenSubscriptions: () -> Unit,
     onOpenPhoneConfirm: () -> Unit,
     onOpenTerms: () -> Unit
 ) {
@@ -180,32 +176,6 @@ fun NavigationMenuDialog(
                     }
                 ),
                 FeatureMenuItem(
-                    title = "💵 Cash Out Coins to Real Money",
-                    description = "Instant transfer to PayPal, Bank Wire ACH, Crypto USDT or Cash App",
-                    icon = Icons.Default.MonetizationOn,
-                    tint = Color(0xFF10B981),
-                    badge = "REAL MONEY",
-                    badgeColor = Color(0xFF10B981),
-                    testTag = "menu_cashout_transfer",
-                    onClick = {
-                        onDismiss()
-                        onOpenCashout()
-                    }
-                ),
-                FeatureMenuItem(
-                    title = "🛍️ In-App Coin Store",
-                    description = "Spend virtual coins on VIP plans, Themes, and Soundboards",
-                    icon = Icons.Default.CardGiftcard,
-                    tint = BurnerGold,
-                    badge = "SPEND COINS",
-                    badgeColor = BurnerGold,
-                    testTag = "menu_coin_inapp_shop",
-                    onClick = {
-                        onDismiss()
-                        onOpenCoinShop()
-                    }
-                ),
-                FeatureMenuItem(
                     title = "👤 Worldwide Personal Profile",
                     description = "Edit country flag, callsign, bio & reputation",
                     icon = Icons.Default.Person,
@@ -219,7 +189,7 @@ fun NavigationMenuDialog(
                 ),
                 FeatureMenuItem(
                     title = "👥 Global Friends & Block List",
-                    description = "Manage worldwide contacts, blocked users & gifts",
+                    description = "Manage worldwide contacts & blocked users",
                     icon = Icons.Default.People,
                     tint = PttNeonGreen,
                     badge = "ROSTER",
@@ -230,21 +200,8 @@ fun NavigationMenuDialog(
                     }
                 ),
                 FeatureMenuItem(
-                    title = "🪙 Buy Virtual Coins",
-                    description = "Recharge coin balance for gifts & in-app purchases",
-                    icon = Icons.Default.MonetizationOn,
-                    tint = BurnerGold,
-                    badge = "RECHARGE",
-                    badgeColor = BurnerGold,
-                    testTag = "menu_worldwide_coins",
-                    onClick = {
-                        onDismiss()
-                        onOpenBuyCoins()
-                    }
-                ),
-                FeatureMenuItem(
                     title = "➕ Host a Worldwide Room",
-                    description = "Create a custom live voice room for your city",
+                    description = "Create a custom live voice room for your city or group",
                     icon = Icons.Default.Public,
                     tint = TacticalCyan,
                     badge = "CREATE",
@@ -287,7 +244,7 @@ fun NavigationMenuDialog(
                 ),
                 FeatureMenuItem(
                     title = "Direct 1-on-1 Contacts",
-                    description = "Private encrypted walkie lines with trusted teammates",
+                    description = "Private encrypted walkie lines with verified contacts",
                     icon = Icons.Default.People,
                     tint = accentColor,
                     badge = "CONTACTS",
@@ -315,19 +272,19 @@ fun NavigationMenuDialog(
         ),
 
         FeatureSection(
-            sectionTitle = "PRIVACY & AUDIO FILTERS",
+            sectionTitle = "SECURITY & AUDIO FILTERS",
             items = listOf(
                 FeatureMenuItem(
-                    title = "Burner Phone Lines",
-                    description = "Anonymous disposable numbers & caller ID masking",
-                    icon = Icons.Default.Whatshot,
-                    tint = BurnerGold,
-                    badge = if (userIdentity.hasBurnerSubscription) "VIP ACTIVE" else "UPGRADE",
-                    badgeColor = BurnerGold,
-                    testTag = "menu_burner_lines",
+                    title = "256-Bit E2EE Security Keys",
+                    description = "Session encryption, safety key & fingerprint verification",
+                    icon = Icons.Default.Security,
+                    tint = PttNeonGreen,
+                    badge = "AES-256 E2EE",
+                    badgeColor = PttNeonGreen,
+                    testTag = "menu_e2ee_security",
                     onClick = {
-                        onNavigateToTab(3)
                         onDismiss()
+                        onOpenSafetyKey()
                     }
                 ),
                 FeatureMenuItem(
@@ -344,24 +301,12 @@ fun NavigationMenuDialog(
                     }
                 ),
                 FeatureMenuItem(
-                    title = "256-Bit E2EE Security Keys",
-                    description = "Session encryption, safety key & fingerprint verification",
-                    icon = Icons.Default.Security,
-                    tint = PttNeonGreen,
-                    badge = "AES-256 MESH",
-                    badgeColor = PttNeonGreen,
-                    testTag = "menu_e2ee_security",
-                    onClick = {
-                        onDismiss()
-                        onOpenSafetyKey()
-                    }
-                ),
-                FeatureMenuItem(
-                    title = "Active Number & Caller ID",
-                    description = "Currently active: ${userIdentity.activeDisplayNumber}",
+                    title = "Verified Phone Number",
+                    description = "Verified: ${userIdentity.phoneNumber.ifBlank { "Not set" }}",
                     icon = Icons.Default.PhoneIphone,
-                    tint = if (userIdentity.activeNumberType == NumberType.BURNER) BurnerGold else TacticalCyan,
-                    badge = if (userIdentity.activeNumberType == NumberType.BURNER) "BURNER" else "PHONE",
+                    tint = TacticalCyan,
+                    badge = if (userIdentity.isPhoneVerified) "VERIFIED" else "UNVERIFIED",
+                    badgeColor = if (userIdentity.isPhoneVerified) PttNeonGreen else TacticalAmber,
                     testTag = "menu_active_number",
                     onClick = {
                         onDismiss()
@@ -375,28 +320,15 @@ fun NavigationMenuDialog(
             items = listOf(
                 FeatureMenuItem(
                     title = "Themes, Layouts & Sounds Studio",
-                    description = "10 Color themes, 5 tactical layouts & 7 PTT audio beeps",
+                    description = "All 10 Color themes, 5 tactical layouts & 7 PTT audio beeps",
                     icon = Icons.Default.ColorLens,
-                    tint = BurnerGold,
-                    badge = if (userIdentity.hasPurchasedThemePack) "ALL UNLOCKED" else "$5.94 PACK",
-                    badgeColor = BurnerGold,
+                    tint = TacticalCyan,
+                    badge = "100% FREE",
+                    badgeColor = TacticalCyan,
                     testTag = "menu_customization_studio",
                     onClick = {
                         onDismiss()
                         onOpenThemes()
-                    }
-                ),
-                FeatureMenuItem(
-                    title = "Subscription VIP Tiers",
-                    description = "Current plan: ${userIdentity.subscriptionTier.title} (${userIdentity.subscriptionTier.priceDisplay})",
-                    icon = Icons.Default.Star,
-                    tint = BurnerGold,
-                    badge = userIdentity.subscriptionTier.badgeLabel,
-                    badgeColor = BurnerGold,
-                    testTag = "menu_subscription_plans",
-                    onClick = {
-                        onDismiss()
-                        onOpenSubscriptions()
                     }
                 ),
                 FeatureMenuItem(

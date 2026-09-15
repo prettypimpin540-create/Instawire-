@@ -11,6 +11,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -25,11 +26,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,8 +54,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.data.model.AppThemeScheme
 import com.example.ui.PttState
 import com.example.ui.theme.PttGreenDark
 import com.example.ui.theme.PttGreenGlow
@@ -71,8 +79,11 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Large circular Hold-to-Talk button component with multi-layered pulse wave animations.
- * Triggers audio recording on touch hold and stops on release.
+ * Large circular Push-to-Talk button component with highly responsive touch gestures
+ * and distinct visual feedback states:
+ * 1. IDLE: Calm rhythmic ambient breathing aura, bezel compass ticks, tactical readiness.
+ * 2. RECORDING: Multi-tiered expanding acoustic radar shockwaves, pulsing hot red core, live duration readout.
+ * 3. ERROR: Warning hazard strobe, crimson alert halo, warning iconography, and tap-to-recover prompt.
  */
 @Composable
 fun HoldToTalkButton(
@@ -80,7 +91,9 @@ fun HoldToTalkButton(
     transmitElapsedSec: Float,
     onPress: () -> Unit,
     onRelease: () -> Unit,
-    themeScheme: com.example.data.model.AppThemeScheme = com.example.data.model.AppThemeScheme.TACTICAL_GREEN,
+    errorMessage: String? = null,
+    onErrorClick: () -> Unit = {},
+    themeScheme: AppThemeScheme = AppThemeScheme.TACTICAL_GREEN,
     modifier: Modifier = Modifier
 ) {
     PttTactileButton(
@@ -88,6 +101,8 @@ fun HoldToTalkButton(
         transmitElapsedSec = transmitElapsedSec,
         onPress = onPress,
         onRelease = onRelease,
+        errorMessage = errorMessage,
+        onErrorClick = onErrorClick,
         themeScheme = themeScheme,
         modifier = modifier
     )
@@ -99,115 +114,156 @@ fun PttTactileButton(
     transmitElapsedSec: Float,
     onPress: () -> Unit,
     onRelease: () -> Unit,
-    themeScheme: com.example.data.model.AppThemeScheme = com.example.data.model.AppThemeScheme.TACTICAL_GREEN,
+    errorMessage: String? = null,
+    onErrorClick: () -> Unit = {},
+    themeScheme: AppThemeScheme = AppThemeScheme.TACTICAL_GREEN,
     modifier: Modifier = Modifier
 ) {
-    val isTransmitting = pttState == PttState.TRANSMITTING
+    val isRecording = pttState == PttState.RECORDING || pttState == PttState.TRANSMITTING
+    val isError = pttState == PttState.ERROR
+    val isBusy = pttState == PttState.BUSY
     val isIncoming = pttState == PttState.INCOMING_TRANSMISSION
+    val isIdle = pttState == PttState.IDLE
+
     var isPhysicallyPressed by remember { mutableStateOf(false) }
 
-    // Physical depression spring scale
+    // Physical depression scale feedback
     val buttonScale by animateFloatAsState(
-        targetValue = if (isPhysicallyPressed || isTransmitting) 0.95f else 1.0f,
-        animationSpec = tween(durationMillis = 120),
+        targetValue = when {
+            isPhysicallyPressed || isRecording -> 0.94f
+            isError -> 0.98f
+            else -> 1.0f
+        },
+        animationSpec = tween(durationMillis = 100),
         label = "button_scale"
     )
 
-    // Pulse animations for outer acoustic/radar waves
+    // Pulse animations engine
     val infiniteTransition = rememberInfiniteTransition(label = "ptt_pulse_engine")
 
-    // Pulse Ring 1 (Primary high-energy wave)
+    // Pulse Ring 1 (Primary shockwave)
     val pulseWave1 by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isTransmitting) 650 else 2400, easing = FastOutSlowInEasing),
+            animation = tween(
+                durationMillis = when {
+                    isError -> 450
+                    isRecording -> 650
+                    else -> 2400
+                },
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Restart
         ),
         label = "pulse_wave_1"
     )
 
-    // Pulse Ring 2 (Secondary staggered wave)
+    // Pulse Ring 2 (Staggered secondary wave)
     val pulseWave2 by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isTransmitting) 650 else 2400, delayMillis = if (isTransmitting) 325 else 1200, easing = FastOutSlowInEasing),
+            animation = tween(
+                durationMillis = when {
+                    isError -> 450
+                    isRecording -> 650
+                    else -> 2400
+                },
+                delayMillis = when {
+                    isError -> 225
+                    isRecording -> 325
+                    else -> 1200
+                },
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Restart
         ),
         label = "pulse_wave_2"
     )
 
-    // Pulse Ring 3 (High-frequency third ripple for recording)
-    val pulseWave3 by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(if (isTransmitting) 650 else 2400, delayMillis = if (isTransmitting) 160 else 600, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "pulse_wave_3"
-    )
-
     // Ambient breathing aura / glowing recording pulse
     val breathingAura by infiniteTransition.animateFloat(
-        initialValue = if (isTransmitting) 0.95f else 0.98f,
-        targetValue = if (isTransmitting) 1.22f else 1.08f,
+        initialValue = if (isRecording || isError) 0.96f else 0.98f,
+        targetValue = if (isRecording || isError) 1.25f else 1.08f,
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isTransmitting) 380 else 1800, easing = FastOutSlowInEasing),
+            animation = tween(
+                durationMillis = if (isRecording || isError) 360 else 1800,
+                easing = FastOutSlowInEasing
+            ),
             repeatMode = RepeatMode.Reverse
         ),
         label = "breathing_aura"
     )
 
-    // Microphone icon rhythmic pulse scale while recording
-    val micRecordingPulse by infiniteTransition.animateFloat(
+    // Icon rhythmic pulse scale while recording or error
+    val iconPulseScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
-        targetValue = if (isTransmitting) 1.32f else 1.0f,
+        targetValue = when {
+            isRecording -> 1.30f
+            isError -> 1.18f
+            else -> 1.0f
+        },
         animationSpec = infiniteRepeatable(
-            animation = tween(if (isTransmitting) 400 else 1000, easing = FastOutSlowInEasing),
+            animation = tween(if (isRecording || isError) 380 else 1000, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "mic_recording_pulse"
+        label = "icon_pulse_scale"
     )
 
     // Recording dot blink animation
-    val recordingDotAlpha by infiniteTransition.animateFloat(
+    val blinkAlpha by infiniteTransition.animateFloat(
         initialValue = 0.2f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(300, easing = LinearEasing),
+            animation = tween(if (isError) 220 else 300, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "recording_dot_alpha"
+        label = "blink_alpha"
     )
 
+    // Color derivation according to active state
     val customPrimary = Color(themeScheme.primaryHex)
     val customGlow = Color(themeScheme.glowHex)
     val customDark = Color(themeScheme.darkHex)
 
     val primaryColor = when {
-        isTransmitting -> PttHotRed
+        isBusy -> Color(0xFFFFB300)
+        isError -> Color(0xFFEF4444)
+        isRecording -> PttHotRed
         isIncoming -> TacticalCyan
         else -> customPrimary
     }
 
     val glowColor = when {
-        isTransmitting -> PttRedGlow
+        isBusy -> Color(0xFFFFD54F)
+        isError -> Color(0xFFF87171)
+        isRecording -> PttRedGlow
         isIncoming -> TacticalCyanGlow
         else -> customGlow
     }
 
     val darkBaseColor = when {
-        isTransmitting -> PttRedDark
+        isBusy -> Color(0xFF5D4037)
+        isError -> Color(0xFF450A0A)
+        isRecording -> PttRedDark
         isIncoming -> Color(0xFF1F6FEB)
         else -> customDark
+    }
+
+    val stateTestTag = when {
+        isBusy -> "ptt_state_busy"
+        isError -> "ptt_state_error"
+        isRecording -> "ptt_state_recording"
+        isIncoming -> "ptt_state_incoming"
+        else -> "ptt_state_idle"
     }
 
     Box(
         modifier = modifier
             .size(260.dp)
-            .testTag("ptt_button_container"),
+            .testTag("ptt_button_container")
+            .testTag(stateTestTag),
         contentAlignment = Alignment.Center
     ) {
         // Multi-stage visual pulse waves and tactical bezel markings
@@ -222,43 +278,31 @@ fun PttTactileButton(
 
             // 1. Expanding Staggered Pulse Wave 1
             val radius1 = baseRadius + (maxExpandRadius - baseRadius) * pulseWave1
-            val alpha1 = (1f - pulseWave1).coerceIn(0f, 1f) * if (isTransmitting) 0.9f else 0.4f
+            val alpha1 = (1f - pulseWave1).coerceIn(0f, 1f) * if (isRecording || isError) 0.92f else 0.4f
             drawCircle(
                 color = primaryColor.copy(alpha = alpha1),
                 radius = radius1,
                 center = center,
-                style = Stroke(width = if (isTransmitting) 5.dp.toPx() else 2.dp.toPx())
+                style = Stroke(width = if (isRecording || isError) 5.dp.toPx() else 2.dp.toPx())
             )
 
             // 2. Expanding Staggered Pulse Wave 2
             val radius2 = baseRadius + (maxExpandRadius - baseRadius) * pulseWave2
-            val alpha2 = (1f - pulseWave2).coerceIn(0f, 1f) * if (isTransmitting) 0.85f else 0.4f
+            val alpha2 = (1f - pulseWave2).coerceIn(0f, 1f) * if (isRecording || isError) 0.85f else 0.35f
             drawCircle(
                 color = primaryColor.copy(alpha = alpha2),
                 radius = radius2,
                 center = center,
-                style = Stroke(width = if (isTransmitting) 4.dp.toPx() else 1.5.dp.toPx())
+                style = Stroke(width = if (isRecording || isError) 4.dp.toPx() else 1.5.dp.toPx())
             )
 
-            // 3. Expanding Rapid Wave 3 (Active microphone recording ripple)
-            if (isTransmitting) {
-                val radius3 = baseRadius + (maxExpandRadius - baseRadius) * pulseWave3
-                val alpha3 = (1f - pulseWave3).coerceIn(0f, 1f) * 0.75f
-                drawCircle(
-                    color = glowColor.copy(alpha = alpha3),
-                    radius = radius3,
-                    center = center,
-                    style = Stroke(width = 3.dp.toPx())
-                )
-            }
-
-            // 4. Ambient Breathing Corona Halo
+            // 3. Ambient Breathing Halo
             val coronaRadius = (baseRadius + 8.dp.toPx()) * breathingAura
             drawCircle(
-                color = glowColor.copy(alpha = if (isTransmitting) 0.45f else 0.12f),
+                color = glowColor.copy(alpha = if (isRecording || isError) 0.48f else 0.12f),
                 radius = coronaRadius,
                 center = center,
-                style = Stroke(width = if (isTransmitting) 10.dp.toPx() else 3.dp.toPx())
+                style = Stroke(width = if (isRecording || isError) 10.dp.toPx() else 3.dp.toPx())
             )
 
             // 4. Tactical Dial Compass Tick Marks
@@ -280,13 +324,18 @@ fun PttTactileButton(
                 )
 
                 val tickAlpha = when {
-                    isTransmitting -> if (isMajorTick) 0.8f else 0.4f
+                    isError -> if (isMajorTick) 0.85f else 0.45f
+                    isRecording -> if (isMajorTick) 0.8f else 0.4f
                     isMajorTick -> 0.5f
                     else -> 0.2f
                 }
 
                 drawLine(
-                    color = if (isTransmitting) PttHotRed.copy(alpha = tickAlpha) else TacticalCardBorder.copy(alpha = tickAlpha),
+                    color = when {
+                        isError -> Color(0xFFEF4444).copy(alpha = tickAlpha)
+                        isRecording -> PttHotRed.copy(alpha = tickAlpha)
+                        else -> TacticalCardBorder.copy(alpha = tickAlpha)
+                    },
                     start = start,
                     end = end,
                     strokeWidth = if (isMajorTick) 2.dp.toPx() else 1.dp.toPx()
@@ -301,7 +350,11 @@ fun PttTactileButton(
                 .scale(buttonScale)
                 .clip(CircleShape)
                 .background(TacticalSurfaceElevated)
-                .border(2.dp, TacticalCardBorder, CircleShape)
+                .border(
+                    width = if (isError) 2.5.dp else 2.dp,
+                    color = if (isError) Color(0xFFEF4444) else TacticalCardBorder,
+                    shape = CircleShape
+                )
                 .padding(6.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -321,28 +374,48 @@ fun PttTactileButton(
                     .clip(CircleShape)
                     .background(buttonGradient)
                     .shadow(
-                        elevation = if (isTransmitting) 20.dp else 10.dp,
+                        elevation = when {
+                            isRecording -> 22.dp
+                            isError -> 16.dp
+                            else -> 10.dp
+                        },
                         shape = CircleShape,
                         spotColor = glowColor
                     )
                     .border(
-                        width = if (isTransmitting) 3.dp else 1.5.dp,
-                        color = if (isTransmitting) PttRedGlow else Color.White.copy(alpha = 0.2f),
+                        width = when {
+                            isRecording -> 3.dp
+                            isError -> 3.dp
+                            else -> 1.5.dp
+                        },
+                        color = when {
+                            isError -> Color(0xFFFBBF24) // Warning Amber accent
+                            isRecording -> PttRedGlow
+                            else -> Color.White.copy(alpha = 0.25f)
+                        },
                         shape = CircleShape
                     )
-                    .pointerInput(Unit) {
-                        awaitEachGesture {
-                            awaitFirstDown(requireUnconsumed = false)
-                            isPhysicallyPressed = true
-                            onPress()
-                            try {
-                                waitForUpOrCancellation()
-                            } finally {
-                                isPhysicallyPressed = false
-                                onRelease()
+                    .then(
+                        if (isError) {
+                            Modifier.clickable {
+                                onErrorClick()
+                            }
+                        } else {
+                            Modifier.pointerInput(Unit) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    isPhysicallyPressed = true
+                                    onPress()
+                                    try {
+                                        waitForUpOrCancellation()
+                                    } finally {
+                                        isPhysicallyPressed = false
+                                        onRelease()
+                                    }
+                                }
                             }
                         }
-                    }
+                    )
                     .testTag("ptt_tactile_button"),
                 contentAlignment = Alignment.Center
             ) {
@@ -356,37 +429,109 @@ fun PttTactileButton(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
-                            .background(TacticalDarkBg.copy(alpha = if (isTransmitting) 0.35f else 0.25f)),
+                            .background(
+                                TacticalDarkBg.copy(
+                                    alpha = when {
+                                        isError -> 0.45f
+                                        isRecording -> 0.35f
+                                        else -> 0.25f
+                                    }
+                                )
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = when {
-                                isTransmitting -> Icons.Default.Mic
+                                isError -> Icons.Default.Warning
+                                isRecording -> Icons.Default.Mic
                                 isIncoming -> Icons.Default.VolumeUp
                                 else -> Icons.Default.Radio
                             },
-                            contentDescription = "Hold to Talk Microphone",
-                            tint = TacticalDarkBg,
+                            contentDescription = when {
+                                isError -> "PTT Error: ${errorMessage ?: "Mic Access Required"}"
+                                isRecording -> "Transmitting Audio Live"
+                                else -> "Hold to Talk Microphone"
+                            },
+                            tint = when {
+                                isError -> Color(0xFFFDE047) // Bright alert amber
+                                else -> TacticalDarkBg
+                            },
                             modifier = Modifier
                                 .size(34.dp)
-                                .scale(if (isTransmitting) micRecordingPulse else 1.0f)
+                                .scale(iconPulseScale)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(6.dp))
 
-                    // Primary Action Label
-                    if (isTransmitting) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(TacticalDarkBg.copy(alpha = recordingDotAlpha))
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
+                    // Primary State Label
+                    when {
+                        isBusy -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(TacticalDarkBg.copy(alpha = blinkAlpha))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "PTT IN USE",
+                                    color = TacticalDarkBg,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 14.sp,
+                                    letterSpacing = 1.0.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                        isError -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFFFDE047).copy(alpha = blinkAlpha))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "MIC RESTRICTED",
+                                    color = TacticalDarkBg,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 13.sp,
+                                    letterSpacing = 1.0.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                        isRecording -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(TacticalDarkBg.copy(alpha = blinkAlpha))
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "RECORDING LIVE",
+                                    color = TacticalDarkBg,
+                                    fontWeight = FontWeight.Black,
+                                    fontSize = 14.sp,
+                                    letterSpacing = 1.2.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                        isIncoming -> {
                             Text(
-                                text = "RECORDING LIVE",
+                                text = "RECEIVING LIVE",
                                 color = TacticalDarkBg,
                                 fontWeight = FontWeight.Black,
                                 fontSize = 14.sp,
@@ -394,52 +539,81 @@ fun PttTactileButton(
                                 fontFamily = FontFamily.Monospace
                             )
                         }
-                    } else {
-                        Text(
-                            text = if (isIncoming) "RECEIVING LIVE" else "HOLD TO TALK",
-                            color = TacticalDarkBg,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 14.sp,
-                            letterSpacing = 1.2.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
+                        else -> {
+                            Text(
+                                text = "HOLD TO TALK",
+                                color = TacticalDarkBg,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 14.sp,
+                                letterSpacing = 1.2.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(2.dp))
 
-                    // Dynamic readout or sub-label
-                    if (isTransmitting) {
-                        Text(
-                            text = "%02d:%04.1fs".format((transmitElapsedSec / 60).toInt(), transmitElapsedSec % 60),
-                            color = TacticalDarkBg,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    } else if (isIncoming) {
-                        Text(
-                            text = "AUDIO STREAM ACTIVE",
-                            color = TacticalDarkBg.copy(alpha = 0.9f),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    } else {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(5.dp)
-                                    .clip(CircleShape)
-                                    .background(TacticalDarkBg.copy(alpha = 0.7f))
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
+                    // Dynamic Sub-label / Live Readout
+                    when {
+                        isBusy -> {
                             Text(
-                                text = "PRESS & SPEAK",
-                                color = TacticalDarkBg.copy(alpha = 0.85f),
+                                text = "PLEASE HOLD WHILE IN USE",
+                                color = TacticalDarkBg,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 9.5.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        isError -> {
+                            Text(
+                                text = errorMessage ?: "TAP TO PERMIT MIC",
+                                color = TacticalDarkBg,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        isRecording -> {
+                            Text(
+                                text = "%02d:%04.1fs".format((transmitElapsedSec / 60).toInt(), transmitElapsedSec % 60),
+                                color = TacticalDarkBg,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        isIncoming -> {
+                            Text(
+                                text = "AUDIO STREAM ACTIVE",
+                                color = TacticalDarkBg.copy(alpha = 0.9f),
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace
                             )
+                        }
+                        else -> {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(5.dp)
+                                        .clip(CircleShape)
+                                        .background(TacticalDarkBg.copy(alpha = 0.7f))
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "PRESS & SPEAK",
+                                    color = TacticalDarkBg.copy(alpha = 0.85f),
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
                         }
                     }
                 }
@@ -447,4 +621,3 @@ fun PttTactileButton(
         }
     }
 }
-

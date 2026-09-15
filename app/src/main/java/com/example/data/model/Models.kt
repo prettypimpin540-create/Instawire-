@@ -32,18 +32,18 @@ enum class WalkieLayoutType(
     ),
     MIL_SPEC_COCKPIT(
         title = "Tactical Cockpit HUD",
-        subtitle = "Combat Pilot Telemetry ($0.99)",
+        subtitle = "Combat Pilot Telemetry (Unlocked)",
         description = "Dual TX/RX decibel meters, live audio waterfall spectrogram, target crosshair, and combat flip controls.",
-        isPremium = true,
-        priceDisplay = "$0.99",
+        isPremium = false,
+        priceDisplay = "FREE",
         iconName = "Flight"
     ),
     CYBER_SYNTH_WAVE(
         title = "Cyberpunk Matrix HUD",
-        subtitle = "Neon Terminal Uplink ($0.99)",
+        subtitle = "Neon Terminal Uplink (Unlocked)",
         description = "Glowing neon ring PTT trigger, digital hex oscilloscope, high-tech waveform analyzer, and matrix telemetry.",
-        isPremium = true,
-        priceDisplay = "$0.99",
+        isPremium = false,
+        priceDisplay = "FREE",
         iconName = "Terminal"
     ),
     MINIMALIST_STEALTH(
@@ -56,10 +56,10 @@ enum class WalkieLayoutType(
     ),
     RETRO_VINTAGE_CB(
         title = "Retro 1980s CB Radio",
-        subtitle = "Analog Chrome Transceiver ($0.99)",
+        subtitle = "Analog Chrome Transceiver (Unlocked)",
         description = "Vintage backlit needle VU meter, rotary channel selector knob, chrome bezel rivets, and CB mic clip.",
-        isPremium = true,
-        priceDisplay = "$0.99",
+        isPremium = false,
+        priceDisplay = "FREE",
         iconName = "SettingsRemote"
     )
 }
@@ -112,63 +112,63 @@ enum class AppThemeScheme(
     ),
     MATRIX_EMERALD(
         title = "Matrix Terminal",
-        subtitle = "Deep Terminal Matrix ($0.99)",
+        subtitle = "Deep Terminal Matrix (Unlocked)",
         primaryHex = 0xFF10B981,
         glowHex = 0xFF34D399,
         darkHex = 0xFF064E3B,
         borderHex = 0xFF065F46,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     ),
     VIOLET_ECLIPSE(
         title = "Violet Eclipse",
-        subtitle = "Electronic Warfare Violet ($0.99)",
+        subtitle = "Electronic Warfare Violet (Unlocked)",
         primaryHex = 0xFFA855F7,
         glowHex = 0xFFC084FC,
         darkHex = 0xFF3B0764,
         borderHex = 0xFF6B21A8,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     ),
     DESERT_STORM_GOLD(
         title = "Desert Storm Gold",
-        subtitle = "Tactical Sand & Gold Bevel ($0.99)",
+        subtitle = "Tactical Sand & Gold Bevel (Unlocked)",
         primaryHex = 0xFFEAB308,
         glowHex = 0xFFFACC15,
         darkHex = 0xFF422006,
         borderHex = 0xFF713F12,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     ),
     ARCTIC_ICE_BLUE(
         title = "Arctic Ice Glacier",
-        subtitle = "Sub-Zero Titanium Cyan ($0.99)",
+        subtitle = "Sub-Zero Titanium Cyan (Unlocked)",
         primaryHex = 0xFF06B6D4,
         glowHex = 0xFF67E8F9,
         darkHex = 0xFF083344,
         borderHex = 0xFF0E7490,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     ),
     SOLAR_FLARE_ORANGE(
         title = "Solar Flare Blaze",
-        subtitle = "High-Intensity Fusion ($0.99)",
+        subtitle = "High-Intensity Fusion (Unlocked)",
         primaryHex = 0xFFFF5722,
         glowHex = 0xFFFF8A65,
         darkHex = 0xFF3E1107,
         borderHex = 0xFFB71C1C,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     ),
     NIGHT_VISION_MONO(
         title = "Night Vision Mono",
-        subtitle = "Phosphor Green Monochromatic ($0.99)",
+        subtitle = "Phosphor Green Monochromatic (Unlocked)",
         primaryHex = 0xFF00FF66,
         glowHex = 0xFF80FFB2,
         darkHex = 0xFF00290A,
         borderHex = 0xFF005C17,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     )
 }
 
@@ -225,8 +225,8 @@ enum class PttSoundProfile(
         pressDurationMs = 30,
         releaseFrequencies = listOf(1800, 1500, 1200),
         releaseDurationMs = 35,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     ),
     MIL_SPEC_BEEPER(
         title = "Mil-Spec Combat Beeper",
@@ -235,8 +235,8 @@ enum class PttSoundProfile(
         pressDurationMs = 25,
         releaseFrequencies = listOf(2400, 1800, 1200),
         releaseDurationMs = 35,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     ),
     SONAR_ACOUSTIC(
         title = "Submarine Sonar Ping",
@@ -245,8 +245,8 @@ enum class PttSoundProfile(
         pressDurationMs = 30,
         releaseFrequencies = listOf(2000, 1000, 500),
         releaseDurationMs = 50,
-        isPremium = true,
-        priceDisplay = "$0.99"
+        isPremium = false,
+        priceDisplay = "FREE"
     )
 }
 
@@ -336,52 +336,48 @@ enum class SubscriptionTier(
 data class UserIdentity(
     @PrimaryKey val id: Int = 1,
     val phoneNumber: String = "+1 (555) 839-2041",
-    val isPhoneVerified: Boolean = false,
-    val isHumanVerified: Boolean = false,
-    val hasAgreedToTerms: Boolean = false,
-    val termsAgreedTimestamp: Long = 0L,
+    val isPhoneVerified: Boolean = true,
+    val isHumanVerified: Boolean = true,
+    val hasAgreedToTerms: Boolean = true,
+    val termsAgreedTimestamp: Long = 1700000000000L,
     val burnerNumber: String = "+1 (888) WIRE-7734",
     val hasBurnerSubscription: Boolean = true,
-    val subscriptionTier: SubscriptionTier = SubscriptionTier.PRO,
+    val subscriptionTier: SubscriptionTier = SubscriptionTier.FREE,
     val activeNumberType: NumberType = NumberType.PHONE,
-    val callsign: String = "VIPER-7",
+    val callsign: String = "User",
     val noiseFilterEnabled: Boolean = true,
     val noiseFilterMode: NoiseFilterMode = NoiseFilterMode.STUDIO_CLEAR,
     val layoutType: WalkieLayoutType = WalkieLayoutType.CLASSIC_TACTICAL,
     val themeScheme: AppThemeScheme = AppThemeScheme.TACTICAL_GREEN,
     val soundProfile: PttSoundProfile = PttSoundProfile.NEXTEL_TACTICAL,
-    val unlockedLayouts: String = "CLASSIC_TACTICAL,MINIMALIST_STEALTH,TACTICAL_GREEN,CYBER_AMBER,STEALTH_CYAN,CRIMSON_ALERT",
-    val hasPurchasedThemePack: Boolean = false,
+    val unlockedLayouts: String = "CLASSIC_TACTICAL,MIL_SPEC_COCKPIT,CYBER_SYNTH_WAVE,MINIMALIST_STEALTH,RETRO_VINTAGE_CB",
+    val hasPurchasedThemePack: Boolean = true,
     val chirpSoundEnabled: Boolean = true,
     val rogerBeepEnabled: Boolean = true,
     val hardwareVolumePttEnabled: Boolean = true,
+    val hardwareVolumePttToggleMode: Boolean = false,
     val backgroundMonitoringEnabled: Boolean = true,
     val backgroundAudioBeepEnabled: Boolean = true,
     val zeroLogsEnabled: Boolean = true,
     val ephemeralTimeoutSeconds: Int = 60,
     val volumeLevel: Float = 0.85f,
-    val squelchLevel: Float = 0.40f
+    val squelchLevel: Float = 0.40f,
+    val hapticFeedbackEnabled: Boolean = true,
+    val audioRoutingToEarpiece: Boolean = false,
+    val sleepModeBackgroundListeningEnabled: Boolean = true,
+    val disclaimerAcknowledged: Boolean = true
 ) {
     val activeDisplayNumber: String
-        get() = if (activeNumberType == NumberType.BURNER) burnerNumber else phoneNumber
+        get() = phoneNumber
 
     val isE2eeActive: Boolean
-        get() = subscriptionTier.hasE2EE
+        get() = true
 
-    fun isLayoutUnlocked(layout: WalkieLayoutType): Boolean {
-        if (!layout.isPremium || hasPurchasedThemePack) return true
-        return unlockedLayouts.contains(layout.name)
-    }
+    fun isLayoutUnlocked(layout: WalkieLayoutType): Boolean = true
 
-    fun isThemeUnlocked(theme: AppThemeScheme): Boolean {
-        if (!theme.isPremium || hasPurchasedThemePack) return true
-        return unlockedLayouts.contains(theme.name)
-    }
+    fun isThemeUnlocked(theme: AppThemeScheme): Boolean = true
 
-    fun isSoundUnlocked(sound: PttSoundProfile): Boolean {
-        if (!sound.isPremium || hasPurchasedThemePack) return true
-        return unlockedLayouts.contains(sound.name)
-    }
+    fun isSoundUnlocked(sound: PttSoundProfile): Boolean = true
 }
 
 @Entity(tableName = "burner_lines")
@@ -420,10 +416,17 @@ data class Channel(
     val isEncrypted: Boolean = true,
     val safetyFingerprint: String = "MIL-256-AES-GCM",
     val safetyKeyBlocks: String = "73910 82941 02948 48192 19284 72910 92847 10293 84719 84019 28401 20491",
-    val isSystemChannel: Boolean = true,
+    val isSystemChannel: Boolean = false,
     val isEmergency: Boolean = false,
-    val channelCategory: String = "General"
-)
+    val channelCategory: String = "Custom",
+    val frequencyCode: String = ""
+) {
+    val displayFrequencyCode: String
+        get() = if (frequencyCode.isNotBlank()) frequencyCode else {
+            val num = kotlin.math.abs((name + frequency + id).hashCode() % 9000) + 1000
+            "FRQ-$num"
+        }
+}
 
 enum class ScannerCategory(val title: String, val badgeIcon: String) {
     POLICE("Police & Sheriff", "🚓"),
@@ -530,6 +533,11 @@ data class UserProfile(
     val totalGiftsSent: Int = 8,
     val reputationLevel: Int = 5,
     val badges: String = "GLOBETROTTER,EARLY_ADOPTER,VIP_SUPPORTER"
+)
+
+data class CallsignConflict(
+    val isTaken: Boolean,
+    val takenBy: String? = null
 )
 
 @Entity(tableName = "worldwide_rooms")
@@ -644,68 +652,68 @@ object WorldwideGiftCatalog {
     val GIFTS = listOf(
         PaidGiftItem(
             id = "gift_coffee",
-            name = "Warm Coffee",
-            coinsCost = 50,
-            priceUsd = 0.99,
-            priceDisplay = "$0.99 (50 Coins)",
+            name = "Tactical Coffee",
+            coinsCost = 0,
+            priceUsd = 0.0,
+            priceDisplay = "FREE",
             emoji = "☕",
             badgeLabel = "CHEERS",
-            description = "Send a warm cup of coffee to the current speaker",
+            description = "Send tactical coffee to cheer on the speaker",
             soundEffect = "COFFEE_CHIME"
         ),
         PaidGiftItem(
             id = "gift_rocket",
-            name = "Space Rocket",
-            coinsCost = 100,
-            priceUsd = 1.99,
-            priceDisplay = "$1.99 (100 Coins)",
+            name = "Rocket Boost",
+            coinsCost = 0,
+            priceUsd = 0.0,
+            priceDisplay = "FREE",
             emoji = "🚀",
             badgeLabel = "BOOST",
-            description = "Boost the speaker's voice with a rocket launch visual",
+            description = "Boost the speaker's frequency with a rocket animation",
             soundEffect = "ROCKET_BOOST"
         ),
         PaidGiftItem(
             id = "gift_walkie",
-            name = "Gold Walkie-Talkie",
-            coinsCost = 150,
-            priceUsd = 2.99,
-            priceDisplay = "$2.99 (150 Coins)",
+            name = "Radio Roger",
+            coinsCost = 0,
+            priceUsd = 0.0,
+            priceDisplay = "FREE",
             emoji = "📻",
             badgeLabel = "TACTICAL",
-            description = "Award a 24-Karat Golden Radio Trophy",
+            description = "Transmit a tactical roger salute to the channel",
             soundEffect = "GOLD_CHIRP"
         ),
         PaidGiftItem(
             id = "gift_crown",
-            name = "Royal Diamond Crown",
-            coinsCost = 250,
-            priceUsd = 4.99,
-            priceDisplay = "$4.99 (250 Coins)",
+            name = "Squad Crown",
+            coinsCost = 0,
+            priceUsd = 0.0,
+            priceDisplay = "FREE",
             emoji = "👑",
-            badgeLabel = "VIP ROYAL",
-            description = "Crown the room host with glittering room-wide banners",
+            badgeLabel = "HONOR",
+            description = "Honor the speaker with room-wide cheer banners",
             soundEffect = "ROYAL_FANFARE"
         ),
         PaidGiftItem(
             id = "gift_satellite",
-            name = "Orbital Radio Satellite",
-            coinsCost = 500,
-            priceUsd = 9.99,
-            priceDisplay = "$9.99 (500 Coins)",
+            name = "Orbital Ping",
+            coinsCost = 0,
+            priceUsd = 0.0,
+            priceDisplay = "FREE",
             emoji = "📡",
             badgeLabel = "ORBITAL",
-            description = "Deploy an orbital satellite broadcast effect across the entire room",
+            description = "Deploy an orbital satellite broadcast effect across the room",
             soundEffect = "SATELLITE_SWEEP"
         ),
         PaidGiftItem(
             id = "gift_diamond",
-            name = "Super Galaxy Diamond",
-            coinsCost = 1000,
-            priceUsd = 19.99,
-            priceDisplay = "$19.99 (1000 Coins)",
+            name = "Encrypted Salute",
+            coinsCost = 0,
+            priceUsd = 0.0,
+            priceDisplay = "FREE",
             emoji = "💎",
             badgeLabel = "LEGENDARY",
-            description = "Ultimate legendary gift with full-screen fireworks and audio fanfare",
+            description = "Ultimate encrypted voice salute with celebratory fanfare",
             soundEffect = "DIAMOND_EXPLOSION"
         )
     )
@@ -908,3 +916,56 @@ object CoinInAppCatalog {
         )
     )
 }
+
+/**
+ * Encrypted Local Message Record for offline access and local message history.
+ * Stores AES-GCM encrypted audio payloads or encrypted text bursts with cryptographic fingerprints.
+ */
+@Entity(tableName = "encrypted_messages")
+data class EncryptedMessageRecord(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val messageId: String = java.util.UUID.randomUUID().toString(),
+    val conversationId: String, // Channel ID or Contact Number
+    val senderNumber: String,
+    val senderCallsign: String,
+    val encryptedPayloadBase64: String, // AES-256 GCM encrypted audio ciphertext
+    val encryptionIv: String, // 12-byte cryptographic IV (Hex/Base64)
+    val keyFingerprint: String = "MIL-256-AES-GCM",
+    val messageType: String = "VOICE_PTT", // "VOICE_PTT", "TEXT_DISPATCH", "EMERGENCY_BURST"
+    val audioDurationMs: Long = 0L,
+    val waveAmplitudes: String = "15,35,70,85,60,95,80,45,20,10",
+    val timestamp: Long = System.currentTimeMillis(),
+    val isOutgoing: Boolean = false,
+    val deliveryStatus: String = "ENCRYPTED_LOCAL", // "ENCRYPTED_LOCAL", "TRANSMITTING", "SENT", "DELIVERED", "FAILED"
+    val isOfflineAccessible: Boolean = true
+)
+
+/**
+ * Metadata for burner phone lines for encrypted offline access and lifecycle management.
+ * Tracks Firebase Auth identity linkage, verification status, cryptographic key aliases, and expiration rules.
+ */
+@Entity(tableName = "burner_number_metadata")
+data class BurnerNumberMetadata(
+    @PrimaryKey val phoneNumber: String,
+    val label: String,
+    val areaCode: String,
+    val cityRegion: String,
+    val countryCode: String = "US",
+    val firebaseUid: String? = null,
+    val verificationStatus: String = "ACTIVE", // "PENDING_SMS", "VERIFYING", "ACTIVE", "EXPIRED", "BURNED"
+    val allocatedAt: Long = System.currentTimeMillis(),
+    val expiresAt: Long = System.currentTimeMillis() + (24 * 60 * 60 * 1000L),
+    val keyStoreAlias: String = "burner_key_${System.currentTimeMillis()}",
+    val encryptedMetadataBlob: String = "", // Encrypted SIP/VoIP credentials for offline caching
+    val isOfflineVaultEnabled: Boolean = true,
+    val transmissionLimit: Int = 250,
+    val transmissionsUsed: Int = 0,
+    val autoBurnOnExpire: Boolean = true
+) {
+    val remainingHours: Long
+        get() = ((expiresAt - System.currentTimeMillis()).coerceAtLeast(0)) / (1000 * 60 * 60)
+
+    val isExpired: Boolean
+        get() = System.currentTimeMillis() >= expiresAt
+}
+

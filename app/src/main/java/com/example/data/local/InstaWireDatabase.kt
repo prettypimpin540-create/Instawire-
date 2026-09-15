@@ -7,9 +7,11 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.data.model.BlockedUser
 import com.example.data.model.BurnerLine
+import com.example.data.model.BurnerNumberMetadata
 import com.example.data.model.Channel
 import com.example.data.model.CoinCashoutTransaction
 import com.example.data.model.Contact
+import com.example.data.model.EncryptedMessageRecord
 import com.example.data.model.FriendUser
 import com.example.data.model.GiftTransaction
 import com.example.data.model.LiveRoomMessage
@@ -34,9 +36,11 @@ import kotlinx.coroutines.launch
         BlockedUser::class,
         GiftTransaction::class,
         LiveRoomMessage::class,
-        CoinCashoutTransaction::class
+        CoinCashoutTransaction::class,
+        EncryptedMessageRecord::class,
+        BurnerNumberMetadata::class
     ],
-    version = 9,
+    version = 13,
     exportSchema = false
 )
 abstract class InstaWireDatabase : RoomDatabase() {
@@ -88,11 +92,30 @@ abstract class InstaWireDatabase : RoomDatabase() {
                 INSTANCE?.let { database ->
                     scope.launch(Dispatchers.IO) {
                         val dao = database.instaWireDao()
+                        // Always purge old pre-seeded quick/system channels
+                        dao.deleteSystemChannels()
                         if (dao.getUserIdentitySync() == null) {
                             populateInitialData(dao)
                         } else {
-                            // Ensure real-life channels exist
-                            populateInitialData(dao)
+                            // Ensure initial custom channel exists if list is completely empty
+                            val existingChannels = dao.getAllChannelsSync()
+                            if (existingChannels.isEmpty()) {
+                                dao.insertChannel(
+                                    Channel(
+                                        id = "custom_primary",
+                                        name = "SQUAD ALPHA (CUSTOM)",
+                                        frequency = "462.5625 MHz (FRS 1)",
+                                        description = "Your private custom channel. Share Frequency Code FRQ-7734 to let others join.",
+                                        activeMembersCount = 1,
+                                        isEncrypted = true,
+                                        safetyFingerprint = "ALPHA-CUSTOM-256",
+                                        safetyKeyBlocks = "83910 28491 94820 18274 02938 48192 73910 82941 02948 19284 84019 92847",
+                                        isSystemChannel = false,
+                                        channelCategory = "Custom",
+                                        frequencyCode = "FRQ-7734"
+                                    )
+                                )
+                            }
                         }
                     }
                 }
@@ -100,121 +123,42 @@ abstract class InstaWireDatabase : RoomDatabase() {
         }
 
         suspend fun populateInitialData(dao: InstaWireDao) {
-            // Default User Identity - requires initial Human Verification & Terms Agreement
-            dao.insertOrUpdateIdentity(
-                UserIdentity(
-                    id = 1,
-                    phoneNumber = "+1 (555) 839-2041",
-                    isPhoneVerified = false,
-                    isHumanVerified = false,
-                    hasAgreedToTerms = false,
-                    termsAgreedTimestamp = 0L,
-                    burnerNumber = "+1 (888) WIRE-7734",
-                    hasBurnerSubscription = true,
-                    callsign = "VIPER-7"
-                )
-            )
+            // Always purge any old system channels
+            dao.deleteSystemChannels()
 
-            // Real-Life Practical Channels
-            val defaultChannels = listOf(
-                Channel(
-                    id = "chan_community",
-                    name = "Local Community & Neighborhood Watch",
-                    frequency = "462.5625 MHz (FRS/GMRS 1)",
-                    description = "Open neighborhood safety, alerts, community check-ins & local communication",
-                    activeMembersCount = 38,
-                    isEncrypted = true,
-                    safetyFingerprint = "COMMUNITY-256-AES",
-                    safetyKeyBlocks = "83910 28491 94820 18274 02938 48192 73910 82941 02948 19284 84019 92847",
-                    isEmergency = false,
-                    channelCategory = "Community"
-                ),
-                Channel(
-                    id = "chan_road_cb19",
-                    name = "Highway Travel & Road Help (CB 19)",
-                    frequency = "27.1850 MHz (CB Ch 19)",
-                    description = "Interstate traffic alerts, road hazards, trucker reports, detours & vehicle help",
-                    activeMembersCount = 74,
-                    isEncrypted = false,
-                    safetyFingerprint = "ROAD-CB19-OPEN",
-                    safetyKeyBlocks = "10293 84719 20491 73910 82941 02948 48192 19284 72910 92847 84019 28401",
-                    isEmergency = false,
-                    channelCategory = "Travel & Road"
-                ),
-                Channel(
-                    id = "chan_marine16",
-                    name = "Marine VHF Ch 16 & Boating Safety",
-                    frequency = "156.8000 MHz (VHF Ch 16)",
-                    description = "International marine calling, coastal water safety, harbor traffic & boat hailing",
-                    activeMembersCount = 29,
-                    isEncrypted = false,
-                    safetyFingerprint = "MARINE-VHF16-INTL",
-                    safetyKeyBlocks = "94820 18274 02938 83910 28491 48192 73910 82941 02948 19284 92847 84019",
-                    isEmergency = false,
-                    channelCategory = "Marine"
-                ),
-                Channel(
-                    id = "chan_sar_cert",
-                    name = "Search & Rescue / CERT Teams",
-                    frequency = "155.1600 MHz (National SAR)",
-                    description = "Disaster preparedness, community emergency response (CERT) & volunteer SAR ops",
-                    activeMembersCount = 18,
-                    isEncrypted = true,
-                    safetyFingerprint = "SAR-CERT-NATIONAL",
-                    safetyKeyBlocks = "48192 73910 82941 02948 19284 72910 84019 28401 92847 10293 84719 20491",
-                    isEmergency = false,
-                    channelCategory = "Search & Rescue"
-                ),
-                Channel(
-                    id = "chan_family_camp",
-                    name = "Family & Outdoor Camping",
-                    frequency = "462.6125 MHz (FRS Ch 3)",
-                    description = "Hiking trails, national parks, family outings, campground chats & outdoor activity",
-                    activeMembersCount = 45,
-                    isEncrypted = true,
-                    safetyFingerprint = "FAMILY-OUTDOOR-SAFE",
-                    safetyKeyBlocks = "92847 10293 84719 20491 48192 73910 82941 02948 19284 72910 84019 28401",
-                    isEmergency = false,
-                    channelCategory = "Outdoors"
-                ),
-                Channel(
-                    id = "chan_city_dispatch",
-                    name = "City Events & Venue Security",
-                    frequency = "467.5875 MHz (Commercial 4)",
-                    description = "Venue staff, event coordination, business security patrols & crowd safety",
-                    activeMembersCount = 22,
-                    isEncrypted = true,
-                    safetyFingerprint = "CITY-SECURITY-COMM",
-                    safetyKeyBlocks = "84019 28401 92847 10293 84719 20491 48192 73910 82941 02948 19284 72910",
-                    isEmergency = false,
-                    channelCategory = "Security"
-                ),
-                Channel(
-                    id = "chan_emergency_911",
-                    name = "🚨 EMERGENCY SOS & DISPATCH (CH 9)",
-                    frequency = "462.6750 MHz (Emergency SAR)",
-                    description = "Life-safety emergency & distress only. REQUIRES LEGAL COMPLIANCE DISCLAIMER.",
-                    activeMembersCount = 62,
-                    isEncrypted = true,
-                    safetyFingerprint = "EMERGENCY-SOS-PRIORITY",
-                    safetyKeyBlocks = "20491 73910 82941 10293 84719 02948 48192 19284 72910 92847 84019 28401",
-                    isEmergency = true,
-                    channelCategory = "Emergency"
-                ),
-                Channel(
-                    id = "chan_tacops_support",
-                    name = "Specialist Radio Support 24/7",
-                    frequency = "469.9000 MHz (Support)",
-                    description = "Direct 24/7 radio technician dispatch, audio testing & live help",
-                    activeMembersCount = 6,
-                    isEncrypted = true,
-                    safetyFingerprint = "SUPPORT-RADIO-DIRECT",
-                    safetyKeyBlocks = "99401 18274 02938 83910 28491 48192 73910 82941 02948 19284 92847 84019",
-                    isEmergency = false,
-                    channelCategory = "Support"
+            // Default User Identity - 100% anonymous, instant access
+            if (dao.getUserIdentitySync() == null) {
+                dao.insertOrUpdateIdentity(
+                    UserIdentity(
+                        id = 1,
+                        phoneNumber = "+1 (555) 839-2041",
+                        isPhoneVerified = true,
+                        isHumanVerified = true,
+                        hasAgreedToTerms = true,
+                        termsAgreedTimestamp = System.currentTimeMillis(),
+                        burnerNumber = "+1 (888) WIRE-7734",
+                        hasBurnerSubscription = true,
+                        callsign = "VIPER-7",
+                        disclaimerAcknowledged = true
+                    )
                 )
+            }
+
+            // User-created Custom Channel with unique Frequency Code
+            val initialChannel = Channel(
+                id = "custom_primary",
+                name = "SQUAD ALPHA (CUSTOM)",
+                frequency = "462.5625 MHz (FRS 1)",
+                description = "Your private custom channel. Share Frequency Code FRQ-7734 to let others join.",
+                activeMembersCount = 1,
+                isEncrypted = true,
+                safetyFingerprint = "ALPHA-CUSTOM-256",
+                safetyKeyBlocks = "83910 28491 94820 18274 02938 48192 73910 82941 02948 19284 84019 92847",
+                isSystemChannel = false,
+                channelCategory = "Custom",
+                frequencyCode = "FRQ-7734"
             )
-            dao.insertChannels(defaultChannels)
+            dao.insertChannel(initialChannel)
 
             // Default Burner Lines
             val defaultBurners = listOf(
@@ -583,6 +527,80 @@ abstract class InstaWireDatabase : RoomDatabase() {
                 )
             )
             defaultCashouts.forEach { dao.insertCashoutTransaction(it) }
+
+            // Default Encrypted Offline Messages
+            val defaultEncryptedMessages = listOf(
+                EncryptedMessageRecord(
+                    messageId = "msg_enc_001",
+                    conversationId = "chan_community",
+                    senderNumber = "+1 (555) 749-1029",
+                    senderCallsign = "SHADOW-01",
+                    encryptedPayloadBase64 = "GCM/qV8M1jL2mO+3kP4/aes256==enc",
+                    encryptionIv = "A3F809B2C19E45781290EF31",
+                    keyFingerprint = "COMMUNITY-256-AES",
+                    messageType = "VOICE_PTT",
+                    audioDurationMs = 2800L,
+                    waveAmplitudes = "10,25,60,85,90,75,40,20,5",
+                    timestamp = System.currentTimeMillis() - 120000,
+                    isOutgoing = false,
+                    deliveryStatus = "DELIVERED",
+                    isOfflineAccessible = true
+                ),
+                EncryptedMessageRecord(
+                    messageId = "msg_enc_002",
+                    conversationId = "chan_community",
+                    senderNumber = "+1 (888) WIRE-7734",
+                    senderCallsign = "VIPER-7",
+                    encryptedPayloadBase64 = "GCM/91kM3zL4aB+5qX7/aes256==enc",
+                    encryptionIv = "C81920AF3B489012DE876123",
+                    keyFingerprint = "COMMUNITY-256-AES",
+                    messageType = "VOICE_PTT",
+                    audioDurationMs = 3200L,
+                    waveAmplitudes = "15,40,75,95,90,85,60,30,10",
+                    timestamp = System.currentTimeMillis() - 60000,
+                    isOutgoing = true,
+                    deliveryStatus = "ENCRYPTED_LOCAL",
+                    isOfflineAccessible = true
+                )
+            )
+            defaultEncryptedMessages.forEach { dao.insertEncryptedMessage(it) }
+
+            // Default Burner Number Metadata (Encrypted Offline Access Vault)
+            val defaultBurnerMetadataList = listOf(
+                BurnerNumberMetadata(
+                    phoneNumber = "+1 (888) WIRE-7734",
+                    label = "Primary Encrypted Burner",
+                    areaCode = "888",
+                    cityRegion = "Toll-Free USA",
+                    countryCode = "US",
+                    firebaseUid = "fb_burner_usr_8887734",
+                    verificationStatus = "ACTIVE",
+                    allocatedAt = System.currentTimeMillis() - 86400000L,
+                    expiresAt = System.currentTimeMillis() + (24 * 60 * 60 * 1000L),
+                    keyStoreAlias = "burner_vault_888_7734",
+                    encryptedMetadataBlob = "ENC_SIP_METADATA_AES256_GCM_OK",
+                    isOfflineVaultEnabled = true,
+                    transmissionLimit = 500,
+                    transmissionsUsed = 14
+                ),
+                BurnerNumberMetadata(
+                    phoneNumber = "+1 (415) 890-4122",
+                    label = "San Francisco Recon Burner",
+                    areaCode = "415",
+                    cityRegion = "San Francisco, CA",
+                    countryCode = "US",
+                    firebaseUid = "fb_burner_usr_4158904",
+                    verificationStatus = "ACTIVE",
+                    allocatedAt = System.currentTimeMillis() - 3600000L * 4,
+                    expiresAt = System.currentTimeMillis() + (20 * 60 * 60 * 1000L),
+                    keyStoreAlias = "burner_vault_415_8904",
+                    encryptedMetadataBlob = "ENC_SIP_METADATA_AES256_GCM_SF",
+                    isOfflineVaultEnabled = true,
+                    transmissionLimit = 250,
+                    transmissionsUsed = 6
+                )
+            )
+            defaultBurnerMetadataList.forEach { dao.insertBurnerMetadata(it) }
         }
     }
 }

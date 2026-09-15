@@ -59,8 +59,8 @@ import com.example.ui.theme.TacticalTextSecondary
 fun HudTopBar(
     userIdentity: UserIdentity,
     onOpenSafetyKey: () -> Unit,
-    onOpenNoiseCancel: () -> Unit,
-    onOpenBurnerStore: () -> Unit,
+    onOpenNoiseCancel: () -> Unit = {},
+    onOpenBurnerStore: () -> Unit = {},
     onOpenSubscriptionPlans: () -> Unit = {},
     onOpenThemeSelector: () -> Unit = {},
     onOpenPhoneConfirm: () -> Unit,
@@ -68,7 +68,6 @@ fun HudTopBar(
     modifier: Modifier = Modifier
 ) {
     val accentColor = Color(userIdentity.themeScheme.primaryHex)
-    val isBurner = userIdentity.activeNumberType == NumberType.BURNER
 
     Column(
         modifier = modifier
@@ -105,30 +104,18 @@ fun HudTopBar(
 
                     Spacer(modifier = Modifier.width(6.dp))
 
-                    // Subscription tier badge
+                    // E2EE Walkie badge
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
-                            .background(
-                                when (userIdentity.subscriptionTier) {
-                                    SubscriptionTier.FREE -> TacticalSurfaceElevated
-                                    SubscriptionTier.PRO -> TacticalCyan.copy(alpha = 0.2f)
-                                    SubscriptionTier.BLACK_OPS -> BurnerGold.copy(alpha = 0.2f)
-                                    SubscriptionTier.GHOST_SENTINEL -> accentColor.copy(alpha = 0.2f)
-                                }
-                            )
-                            .clickable { onOpenSubscriptionPlans() }
+                            .background(PttNeonGreen.copy(alpha = 0.15f))
+                            .border(0.8.dp, PttNeonGreen.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
                             .padding(horizontal = 6.dp, vertical = 2.dp)
                             .testTag("hud_tier_badge")
                     ) {
                         Text(
-                            text = userIdentity.subscriptionTier.badgeLabel,
-                            color = when (userIdentity.subscriptionTier) {
-                                SubscriptionTier.FREE -> TacticalTextMuted
-                                SubscriptionTier.PRO -> TacticalCyan
-                                SubscriptionTier.BLACK_OPS -> BurnerGold
-                                SubscriptionTier.GHOST_SENTINEL -> accentColor
-                            },
+                            text = "AES-256 E2EE",
+                            color = PttNeonGreen,
                             fontWeight = FontWeight.Bold,
                             fontSize = 8.5.sp,
                             fontFamily = FontFamily.Monospace
@@ -138,7 +125,7 @@ fun HudTopBar(
 
                 Spacer(modifier = Modifier.height(2.dp))
 
-                // Active callsign & number subtitle
+                // Active callsign & verified phone subtitle
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.clickable { onOpenPhoneConfirm() }
@@ -151,16 +138,16 @@ fun HudTopBar(
                         fontFamily = FontFamily.Monospace
                     )
                     Text(
-                        text = " • ${userIdentity.activeDisplayNumber}",
+                        text = " • ${if (userIdentity.phoneNumber.isNotBlank()) userIdentity.phoneNumber else "Verified Phone Required"}",
                         color = TacticalTextMuted,
                         fontSize = 10.sp,
                         fontFamily = FontFamily.Monospace
                     )
-                    if (isBurner) {
+                    if (userIdentity.isPhoneVerified) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "[BURNER]",
-                            color = BurnerGold,
+                            text = "[VERIFIED]",
+                            color = PttNeonGreen,
                             fontSize = 9.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace

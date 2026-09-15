@@ -54,5 +54,71 @@ class ExampleRobolectricTest {
     org.junit.Assert.assertTrue(eliteTier.burnerLinesLimit > proTier.burnerLinesLimit)
     org.junit.Assert.assertTrue(ghostTier.hasQuantumTunnel)
   }
+
+  @Test
+  fun `audio capture state defaults and transitions`() {
+    val defaultState = com.example.service.AudioCaptureState()
+    assertEquals(false, defaultState.isCapturing)
+    assertEquals(false, defaultState.isScreenLocked)
+    assertEquals(false, defaultState.isMuted)
+    assertEquals(16, defaultState.spectrumBars.size)
+
+    val activeState = defaultState.copy(
+      isCapturing = true,
+      isScreenLocked = true,
+      durationSeconds = 120L,
+      packetsSent = 450L
+    )
+    assertEquals(true, activeState.isCapturing)
+    assertEquals(true, activeState.isScreenLocked)
+    assertEquals(120L, activeState.durationSeconds)
+    assertEquals(450L, activeState.packetsSent)
+  }
+
+  @Test
+  fun `verify custom channel frequency code and sharing format`() {
+    val channel = com.example.data.model.Channel(
+      id = "custom_channel_123",
+      name = "Bravo Squad",
+      frequency = "462.5875 MHz",
+      description = "Custom tactical team channel",
+      activeMembersCount = 1,
+      frequencyCode = "BRAVO-77",
+      isEncrypted = true,
+      isSystemChannel = false
+    )
+
+    assertEquals("BRAVO-77", channel.displayFrequencyCode)
+    assertEquals(false, channel.isSystemChannel)
+    assertEquals(true, channel.isEncrypted)
+  }
+
+  @Test
+  fun `verify hardware volume PTT toggle mode setting in UserIdentity`() {
+    val identity = com.example.data.model.UserIdentity(
+      callsign = "PHANTOM-9",
+      hardwareVolumePttEnabled = true,
+      hardwareVolumePttToggleMode = false
+    )
+    assertEquals(true, identity.hardwareVolumePttEnabled)
+    assertEquals(false, identity.hardwareVolumePttToggleMode)
+
+    val toggledMode = identity.copy(hardwareVolumePttToggleMode = true)
+    assertEquals(true, toggledMode.hardwareVolumePttToggleMode)
+  }
+
+  @Test
+  fun `verify callsign conflict detection data model`() {
+    val noConflict = com.example.data.model.CallsignConflict(isTaken = false)
+    assertEquals(false, noConflict.isTaken)
+    assertEquals(null, noConflict.takenBy)
+
+    val conflict = com.example.data.model.CallsignConflict(
+      isTaken = true,
+      takenBy = "Contact: Marcus 'Shadow' Vance (SHADOW-01)"
+    )
+    assertEquals(true, conflict.isTaken)
+    assertEquals("Contact: Marcus 'Shadow' Vance (SHADOW-01)", conflict.takenBy)
+  }
 }
 

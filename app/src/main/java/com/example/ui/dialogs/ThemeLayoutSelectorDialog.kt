@@ -92,8 +92,7 @@ fun ThemeLayoutSelectorDialog(
     onSelectLayout: (WalkieLayoutType) -> Unit,
     onSelectTheme: (AppThemeScheme) -> Unit,
     onSelectSound: (PttSoundProfile) -> Unit,
-    onPreviewSound: (PttSoundProfile, Boolean) -> Unit,
-    onOpenPurchaseModal: (itemKey: String, title: String, price: String, description: String) -> Unit
+    onPreviewSound: (PttSoundProfile, Boolean) -> Unit
 ) {
     val accentColor = Color(userIdentity.themeScheme.primaryHex)
     val glowColor = Color(userIdentity.themeScheme.glowHex)
@@ -171,75 +170,6 @@ fun ThemeLayoutSelectorDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // VIP Theme Pass Banner (If not yet purchased)
-                if (!userIdentity.hasPurchasedThemePack) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(1.dp, BurnerGold.copy(alpha = 0.7f), RoundedCornerShape(12.dp))
-                            .clickable {
-                                onOpenPurchaseModal(
-                                    "ALL_THEMES_PASS",
-                                    "InstaWire All 6 Themes Pack ($5.94)",
-                                    "$5.94",
-                                    "Unlock all 6 premium color themes for sale (Matrix Emerald, Violet Eclipse, Desert Gold, Arctic Ice, Solar Flare, Night Vision Mono) at $0.99 each ($5.94 total)."
-                                )
-                            }
-                            .testTag("all_themes_pass_banner"),
-                        colors = CardDefaults.cardColors(containerColor = TacticalSurface)
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "Star",
-                                    tint = BurnerGold,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Column {
-                                    Text(
-                                        text = "ALL THEMES PACK ($5.94)",
-                                        color = BurnerGold,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = "Unlock all 6 themes for sale (6 x $0.99 = $5.94)",
-                                        color = TacticalTextSecondary,
-                                        fontSize = 10.sp
-                                    )
-                                }
-                            }
-
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(BurnerGold)
-                                    .padding(horizontal = 10.dp, vertical = 5.dp)
-                            ) {
-                                Text(
-                                    text = "$5.94 BUY",
-                                    color = TacticalDarkBg,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-
                 // 3 Navigation Tabs: Layouts, Themes, Sounds
                 TabRow(
                     selectedTabIndex = selectedTab,
@@ -307,21 +237,18 @@ fun ThemeLayoutSelectorDialog(
                     0 -> LayoutsTabContent(
                         userIdentity = userIdentity,
                         accentColor = accentColor,
-                        onSelectLayout = onSelectLayout,
-                        onOpenPurchaseModal = onOpenPurchaseModal
+                        onSelectLayout = onSelectLayout
                     )
                     1 -> ThemesTabContent(
                         userIdentity = userIdentity,
                         accentColor = accentColor,
-                        onSelectTheme = onSelectTheme,
-                        onOpenPurchaseModal = onOpenPurchaseModal
+                        onSelectTheme = onSelectTheme
                     )
                     2 -> SoundsTabContent(
                         userIdentity = userIdentity,
                         accentColor = accentColor,
                         onSelectSound = onSelectSound,
-                        onPreviewSound = onPreviewSound,
-                        onOpenPurchaseModal = onOpenPurchaseModal
+                        onPreviewSound = onPreviewSound
                     )
                 }
             }
@@ -333,8 +260,7 @@ fun ThemeLayoutSelectorDialog(
 private fun LayoutsTabContent(
     userIdentity: UserIdentity,
     accentColor: Color,
-    onSelectLayout: (WalkieLayoutType) -> Unit,
-    onOpenPurchaseModal: (itemKey: String, title: String, price: String, description: String) -> Unit
+    onSelectLayout: (WalkieLayoutType) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -343,7 +269,6 @@ private fun LayoutsTabContent(
     ) {
         items(WalkieLayoutType.values()) { layout ->
             val isSelected = userIdentity.layoutType == layout
-            val isUnlocked = userIdentity.isLayoutUnlocked(layout)
 
             Card(
                 modifier = Modifier
@@ -351,21 +276,10 @@ private fun LayoutsTabContent(
                     .clip(RoundedCornerShape(14.dp))
                     .border(
                         1.5.dp,
-                        if (isSelected) accentColor else if (!isUnlocked) BurnerGold.copy(alpha = 0.5f) else TacticalCardBorder,
+                        if (isSelected) accentColor else TacticalCardBorder,
                         RoundedCornerShape(14.dp)
                     )
-                    .clickable {
-                        if (isUnlocked) {
-                            onSelectLayout(layout)
-                        } else {
-                            onOpenPurchaseModal(
-                                layout.name,
-                                layout.title,
-                                layout.priceDisplay,
-                                layout.description
-                            )
-                        }
-                    }
+                    .clickable { onSelectLayout(layout) }
                     .testTag("layout_item_${layout.name}"),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isSelected) TacticalSurfaceElevated else TacticalSurface
@@ -413,7 +327,7 @@ private fun LayoutsTabContent(
                                 )
                                 Text(
                                     text = layout.subtitle,
-                                    color = if (isUnlocked) TacticalTextMuted else BurnerGold,
+                                    color = TacticalTextMuted,
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace
                                 )
@@ -444,36 +358,6 @@ private fun LayoutsTabContent(
                                         fontFamily = FontFamily.Monospace
                                     )
                                 }
-                            }
-                        } else if (!isUnlocked) {
-                            Button(
-                                onClick = {
-                                    onOpenPurchaseModal(
-                                        layout.name,
-                                        layout.title,
-                                        layout.priceDisplay,
-                                        layout.description
-                                    )
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = BurnerGold),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.testTag("unlock_layout_${layout.name}")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = TacticalDarkBg,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "${layout.priceDisplay} BUY",
-                                    color = TacticalDarkBg,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace
-                                )
                             }
                         } else {
                             Button(
@@ -511,102 +395,15 @@ private fun LayoutsTabContent(
 private fun ThemesTabContent(
     userIdentity: UserIdentity,
     accentColor: Color,
-    onSelectTheme: (AppThemeScheme) -> Unit,
-    onOpenPurchaseModal: (itemKey: String, title: String, price: String, description: String) -> Unit
+    onSelectTheme: (AppThemeScheme) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(bottom = 12.dp)
     ) {
-        if (!userIdentity.hasPurchasedThemePack) {
-            item {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .border(1.5.dp, BurnerGold, RoundedCornerShape(14.dp))
-                        .clickable {
-                            onOpenPurchaseModal(
-                                "ALL_THEMES_PASS",
-                                "All 6 Themes Pack ($5.94)",
-                                "$5.94",
-                                "Unlock all 6 premium color themes for sale (Matrix Emerald, Violet Eclipse, Desert Gold, Arctic Ice, Solar Flare, Night Vision Mono) at the complete sum of $5.94 ($0.99 x 6)."
-                            )
-                        }
-                        .testTag("themes_tab_buy_all_card"),
-                    colors = CardDefaults.cardColors(containerColor = TacticalSurfaceElevated)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(36.dp)
-                                    .clip(CircleShape)
-                                    .background(BurnerGold.copy(alpha = 0.2f))
-                                    .border(1.5.dp, BurnerGold, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Star,
-                                    contentDescription = "Star",
-                                    tint = BurnerGold,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column {
-                                Text(
-                                    text = "BUY ALL 6 THEMES FOR SALE",
-                                    color = BurnerGold,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Black,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    text = "Total of all 6 themes ($0.99 ea = $5.94 total)",
-                                    color = TacticalTextSecondary,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-
-                        Button(
-                            onClick = {
-                                onOpenPurchaseModal(
-                                    "ALL_THEMES_PASS",
-                                    "All 6 Themes Pack ($5.94)",
-                                    "$5.94",
-                                    "Unlock all 6 premium color themes for sale (Matrix Emerald, Violet Eclipse, Desert Gold, Arctic Ice, Solar Flare, Night Vision Mono) at the complete sum of $5.94 ($0.99 x 6)."
-                                )
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = BurnerGold),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("buy_all_themes_button_tab")
-                        ) {
-                            Text(
-                                text = "$5.94 BUY",
-                                color = TacticalDarkBg,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Black,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
         items(AppThemeScheme.values()) { theme ->
             val isSelected = userIdentity.themeScheme == theme
-            val isUnlocked = userIdentity.isThemeUnlocked(theme)
             val themePrimary = Color(theme.primaryHex)
             val themeGlow = Color(theme.glowHex)
 
@@ -616,21 +413,10 @@ private fun ThemesTabContent(
                     .clip(RoundedCornerShape(14.dp))
                     .border(
                         1.5.dp,
-                        if (isSelected) themePrimary else if (!isUnlocked) BurnerGold.copy(alpha = 0.5f) else TacticalCardBorder,
+                        if (isSelected) themePrimary else TacticalCardBorder,
                         RoundedCornerShape(14.dp)
                     )
-                    .clickable {
-                        if (isUnlocked) {
-                            onSelectTheme(theme)
-                        } else {
-                            onOpenPurchaseModal(
-                                theme.name,
-                                "${theme.title} Color Palette",
-                                theme.priceDisplay,
-                                "${theme.subtitle} • High-contrast visual styling for all PTT controls & HUD"
-                            )
-                        }
-                    }
+                    .clickable { onSelectTheme(theme) }
                     .testTag("theme_item_${theme.name}"),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isSelected) TacticalSurfaceElevated else TacticalSurface
@@ -674,7 +460,7 @@ private fun ThemesTabContent(
                             )
                             Text(
                                 text = theme.subtitle,
-                                color = if (isUnlocked) TacticalTextMuted else BurnerGold,
+                                color = TacticalTextMuted,
                                 fontSize = 10.sp,
                                 fontFamily = FontFamily.Monospace
                             )
@@ -694,36 +480,6 @@ private fun ThemesTabContent(
                                 color = themePrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    } else if (!isUnlocked) {
-                        Button(
-                            onClick = {
-                                onOpenPurchaseModal(
-                                    theme.name,
-                                    "${theme.title} Color Palette",
-                                    theme.priceDisplay,
-                                    "${theme.subtitle} • High-contrast visual styling for all PTT controls & HUD"
-                                )
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = BurnerGold),
-                            shape = RoundedCornerShape(8.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                            modifier = Modifier.testTag("unlock_theme_${theme.name}")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Lock,
-                                contentDescription = null,
-                                tint = TacticalDarkBg,
-                                modifier = Modifier.size(12.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "${theme.priceDisplay} BUY",
-                                color = TacticalDarkBg,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Black,
                                 fontFamily = FontFamily.Monospace
                             )
                         }
@@ -754,8 +510,7 @@ private fun SoundsTabContent(
     userIdentity: UserIdentity,
     accentColor: Color,
     onSelectSound: (PttSoundProfile) -> Unit,
-    onPreviewSound: (PttSoundProfile, Boolean) -> Unit,
-    onOpenPurchaseModal: (itemKey: String, title: String, price: String, description: String) -> Unit
+    onPreviewSound: (PttSoundProfile, Boolean) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -764,7 +519,6 @@ private fun SoundsTabContent(
     ) {
         items(PttSoundProfile.values()) { sound ->
             val isSelected = userIdentity.soundProfile == sound
-            val isUnlocked = userIdentity.isSoundUnlocked(sound)
 
             Card(
                 modifier = Modifier
@@ -772,21 +526,10 @@ private fun SoundsTabContent(
                     .clip(RoundedCornerShape(14.dp))
                     .border(
                         1.5.dp,
-                        if (isSelected) accentColor else if (!isUnlocked) BurnerGold.copy(alpha = 0.5f) else TacticalCardBorder,
+                        if (isSelected) accentColor else TacticalCardBorder,
                         RoundedCornerShape(14.dp)
                     )
-                    .clickable {
-                        if (isUnlocked) {
-                            onSelectSound(sound)
-                        } else {
-                            onOpenPurchaseModal(
-                                sound.name,
-                                "${sound.title} PTT Sound Pack",
-                                sound.priceDisplay,
-                                "${sound.description} • High-fidelity audio chirps for PTT transmit and release"
-                            )
-                        }
-                    }
+                    .clickable { onSelectSound(sound) }
                     .testTag("sound_item_${sound.name}"),
                 colors = CardDefaults.cardColors(
                     containerColor = if (isSelected) TacticalSurfaceElevated else TacticalSurface
@@ -831,8 +574,8 @@ private fun SoundsTabContent(
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = if (isUnlocked) "Press play button to sample" else "${sound.priceDisplay} Premium Sound Pack",
-                                    color = if (isUnlocked) TacticalTextMuted else BurnerGold,
+                                    text = "Press play button to sample",
+                                    color = TacticalTextMuted,
                                     fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace
                                 )
@@ -852,36 +595,6 @@ private fun SoundsTabContent(
                                     color = accentColor,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                        } else if (!isUnlocked) {
-                            Button(
-                                onClick = {
-                                    onOpenPurchaseModal(
-                                        sound.name,
-                                        "${sound.title} PTT Sound Pack",
-                                        sound.priceDisplay,
-                                        "${sound.description} • High-fidelity audio chirps for PTT transmit and release"
-                                    )
-                                },
-                                colors = ButtonDefaults.buttonColors(containerColor = BurnerGold),
-                                shape = RoundedCornerShape(8.dp),
-                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                modifier = Modifier.testTag("unlock_sound_${sound.name}")
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    tint = TacticalDarkBg,
-                                    modifier = Modifier.size(12.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "${sound.priceDisplay} BUY",
-                                    color = TacticalDarkBg,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Black,
                                     fontFamily = FontFamily.Monospace
                                 )
                             }

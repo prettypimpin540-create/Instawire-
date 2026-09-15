@@ -481,19 +481,19 @@ fun WorldwideRoomScreen(
                         }
                     }
 
-                    // Send Gift Button
+                    // Friends Roster Button
                     IconButton(
-                        onClick = { onOpenSendGift(null) },
+                        onClick = onOpenFriends,
                         modifier = Modifier
                             .size(46.dp)
                             .clip(CircleShape)
-                            .background(accentGold.copy(alpha = 0.2f))
-                            .border(1.5.dp, accentGold, CircleShape)
+                            .background(Color(0xFF21262D))
+                            .border(1.5.dp, primaryCyan.copy(alpha = 0.5f), CircleShape)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.CardGiftcard,
-                            contentDescription = "Send Gift",
-                            tint = accentGold,
+                            imageVector = Icons.Default.Group,
+                            contentDescription = "Friends",
+                            tint = primaryCyan,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -618,24 +618,13 @@ fun WorldwideSpeakerAvatar(
         Spacer(modifier = Modifier.height(2.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            // Quick Gift
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(accentGold.copy(alpha = 0.15f))
-                    .clickable { onSendGift() }
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Text(text = "🎁 Gift", color = accentGold, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-            }
-
             // Quick Friend
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(4.dp))
                     .background(primaryCyan.copy(alpha = 0.15f))
                     .clickable { onAddFriend() }
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
             ) {
                 Text(text = "+ Friend", color = primaryCyan, fontSize = 9.sp, fontWeight = FontWeight.Bold)
             }

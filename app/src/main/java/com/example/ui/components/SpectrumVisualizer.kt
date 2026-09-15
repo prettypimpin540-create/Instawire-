@@ -35,11 +35,12 @@ import com.example.ui.theme.TacticalSurface
 @Composable
 fun SpectrumVisualizer(
     bars: List<Float>,
-    isTransmitting: Boolean,
-    isIncoming: Boolean,
+    isTransmitting: Boolean = false,
+    isIncoming: Boolean = false,
+    primaryColor: Color? = null,
     modifier: Modifier = Modifier
 ) {
-    val activeColor = when {
+    val activeColor = primaryColor ?: when {
         isTransmitting -> PttHotRed
         isIncoming -> TacticalCyan
         else -> PttNeonGreen
@@ -48,29 +49,12 @@ fun SpectrumVisualizer(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp)
+            .height(48.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(TacticalSurface)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Grid lines overlay
-        Canvas(modifier = Modifier.fillMaxSize()) {
-            val stepY = size.height / 3f
-            drawLine(
-                color = TacticalCardBorder.copy(alpha = 0.4f),
-                start = Offset(0f, stepY),
-                end = Offset(size.width, stepY),
-                strokeWidth = 1f
-            )
-            drawLine(
-                color = TacticalCardBorder.copy(alpha = 0.4f),
-                start = Offset(0f, stepY * 2),
-                end = Offset(size.width, stepY * 2),
-                strokeWidth = 1f
-            )
-        }
-
         Row(
             modifier = Modifier.fillMaxSize(),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -83,15 +67,21 @@ fun SpectrumVisualizer(
                     label = "bar_$index"
                 )
 
-                val barBrush = Brush.verticalGradient(
-                    colors = if (isTransmitting) {
-                        listOf(PttHotRed, TacticalAmber, PttHotRed.copy(alpha = 0.5f))
-                    } else if (isIncoming) {
-                        listOf(TacticalCyan, PttGreenGlow, TacticalCyan.copy(alpha = 0.5f))
-                    } else {
-                        listOf(PttGreenGlow, PttNeonGreen, PttNeonGreen.copy(alpha = 0.4f))
-                    }
-                )
+                val barBrush = if (primaryColor != null) {
+                    Brush.verticalGradient(
+                        colors = listOf(primaryColor, primaryColor.copy(alpha = 0.5f))
+                    )
+                } else {
+                    Brush.verticalGradient(
+                        colors = if (isTransmitting) {
+                            listOf(PttHotRed, TacticalAmber, PttHotRed.copy(alpha = 0.5f))
+                        } else if (isIncoming) {
+                            listOf(TacticalCyan, PttGreenGlow, TacticalCyan.copy(alpha = 0.5f))
+                        } else {
+                            listOf(PttGreenGlow, PttNeonGreen, PttNeonGreen.copy(alpha = 0.4f))
+                        }
+                    )
+                }
 
                 Box(
                     modifier = Modifier

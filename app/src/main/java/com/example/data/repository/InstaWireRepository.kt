@@ -2,8 +2,10 @@ package com.example.data.repository
 
 import com.example.data.local.InstaWireDao
 import com.example.data.model.BurnerLine
+import com.example.data.model.BurnerNumberMetadata
 import com.example.data.model.Channel
 import com.example.data.model.Contact
+import com.example.data.model.EncryptedMessageRecord
 import com.example.data.model.NoiseFilterMode
 import com.example.data.model.NumberType
 import com.example.data.model.Transmission
@@ -26,6 +28,49 @@ class InstaWireRepository(private val dao: InstaWireDao) {
     val allBlockedUsers: Flow<List<com.example.data.model.BlockedUser>> = dao.getAllBlockedUsers()
     val allGiftTransactions: Flow<List<com.example.data.model.GiftTransaction>> = dao.getAllGiftTransactions()
     val allCashoutTransactions: Flow<List<com.example.data.model.CoinCashoutTransaction>> = dao.getAllCashoutTransactions()
+    val allEncryptedMessages: Flow<List<EncryptedMessageRecord>> = dao.getAllEncryptedMessages()
+    val allBurnerMetadata: Flow<List<BurnerNumberMetadata>> = dao.getAllBurnerMetadata()
+
+    fun getEncryptedMessagesForConversation(conversationId: String): Flow<List<EncryptedMessageRecord>> =
+        dao.getEncryptedMessagesForConversation(conversationId)
+
+    suspend fun insertEncryptedMessage(message: EncryptedMessageRecord): Long =
+        dao.insertEncryptedMessage(message)
+
+    suspend fun deleteEncryptedMessage(id: Long) =
+        dao.deleteEncryptedMessage(id)
+
+    suspend fun clearEncryptedMessagesForConversation(conversationId: String) =
+        dao.clearEncryptedMessagesForConversation(conversationId)
+
+    fun getBurnerMetadata(phoneNumber: String): Flow<BurnerNumberMetadata?> =
+        dao.getBurnerMetadata(phoneNumber)
+
+    suspend fun insertBurnerMetadata(metadata: BurnerNumberMetadata) =
+        dao.insertBurnerMetadata(metadata)
+
+    suspend fun updateBurnerVerificationStatus(phoneNumber: String, status: String) =
+        dao.updateBurnerVerificationStatus(phoneNumber, status)
+
+    suspend fun getActiveBurnerMetadata(): List<BurnerNumberMetadata> =
+        dao.getActiveBurnerMetadataSync()
+
+    suspend fun getAllBurnerMetadata(): List<BurnerNumberMetadata> =
+        dao.getAllBurnerMetadataSync()
+
+    suspend fun getBurnerMetadataByNumber(phoneNumber: String): BurnerNumberMetadata? =
+        dao.getBurnerMetadataSync(phoneNumber)
+
+    suspend fun updateBurnerMetadata(phoneNumber: String, verificationStatus: String, firebaseUid: String? = null) =
+        dao.updateBurnerVerificationAndUid(phoneNumber, verificationStatus, firebaseUid)
+
+    suspend fun burnNumber(phoneNumber: String) {
+        dao.updateBurnerVerificationStatus(phoneNumber, "BURNED")
+        dao.deleteBurnerMetadata(phoneNumber)
+    }
+
+    suspend fun deleteBurnerMetadata(phoneNumber: String) =
+        dao.deleteBurnerMetadata(phoneNumber)
 
     fun getRoomMessages(roomId: String): Flow<List<com.example.data.model.LiveRoomMessage>> =
         dao.getRoomMessages(roomId)
@@ -222,20 +267,85 @@ class InstaWireRepository(private val dao: InstaWireDao) {
         dao.insertContact(contact)
     }
 
-    suspend fun addChannel(name: String, frequency: String, description: String) {
-        val id = "channel_" + System.currentTimeMillis()
+    suspend fun addChannel(
+        name: String,
+        frequency: String,
+        description: String,
+        frequencyCode: String = "",
+        isEncrypted: Boolean = true
+    ): Channel {
+        return createCustomChannel(name, frequency, frequencyCode, description, isEncrypted)
+    }
+
+    suspend fun createCustomChannel(
+        name: String,
+        frequency: String,
+        frequencyCode: String,
+        description: String,
+        isEncrypted: Boolean = true
+    ): Channel {
+        val id = "custom_" + System.currentTimeMillis()
+        val code = if (frequencyCode.isNotBlank()) {
+            frequencyCode.trim().uppercase()
+        } else {
+            val randomNum = Random.nextInt(1000, 9999)
+            "FRQ-$randomNum"
+        }
         val channel = Channel(
             id = id,
-            name = name.uppercase(),
-            frequency = frequency,
-            description = description,
-            activeMembersCount = Random.nextInt(2, 12),
-            isEncrypted = true,
+            name = name.trim().uppercase(),
+            frequency = frequency.trim().ifBlank { "462.5625 MHz (FRS 1)" },
+            description = description.trim().ifBlank { "Custom squad channel" },
+            activeMembersCount = 1,
+            isEncrypted = isEncrypted,
             safetyFingerprint = generateSafetyFingerprint(name),
-            safetyKeyBlocks = generateSafetyBlocks(frequency),
-            isSystemChannel = false
+            safetyKeyBlocks = generateSafetyBlocks(code),
+            isSystemChannel = false,
+            channelCategory = "Custom",
+            frequencyCode = code
         )
         dao.insertChannel(channel)
+        return channel
+    }
+
+    suspend fun joinChannelByCode(code: String, customName: String = ""): Channel {
+        val normalizedCode = code.trim().uppercase()
+        val existing = dao.getChannelByCode(normalizedCode)
+        if (existing != null) {
+            return existing
+        }
+
+        val channelName = if (customName.isNotBlank()) customName.trim().uppercase() else "JOINED SQUAD • $normalizedCode"
+        val derivedFreq = if (normalizedCode.contains("MHZ", ignoreCase = true) || normalizedCode.contains(".")) {
+            normalizedCode
+        } else {
+            val freqBands = listOf("462.5625 MHz (FRS 1)", "462.6125 MHz (FRS 3)", "467.5875 MHz (Tactical)", "155.1600 MHz (VHF)")
+            freqBands[kotlin.math.abs(normalizedCode.hashCode()) % freqBands.size]
+        }
+        val id = "joined_" + System.currentTimeMillis()
+        val channel = Channel(
+            id = id,
+            name = channelName,
+            frequency = derivedFreq,
+            description = "Joined via frequency code $normalizedCode",
+            activeMembersCount = Random.nextInt(2, 6),
+            isEncrypted = true,
+            safetyFingerprint = generateSafetyFingerprint(channelName),
+            safetyKeyBlocks = generateSafetyBlocks(normalizedCode),
+            isSystemChannel = false,
+            channelCategory = "Custom",
+            frequencyCode = normalizedCode
+        )
+        dao.insertChannel(channel)
+        return channel
+    }
+
+    suspend fun deleteChannel(id: String) {
+        dao.deleteChannel(id)
+    }
+
+    suspend fun purgeSystemChannels() {
+        dao.deleteSystemChannels()
     }
 
     suspend fun recordTransmission(
@@ -311,6 +421,44 @@ class InstaWireRepository(private val dao: InstaWireDao) {
     suspend fun toggleHardwareVolumePtt() {
         val current = dao.getUserIdentitySync() ?: UserIdentity()
         dao.insertOrUpdateIdentity(current.copy(hardwareVolumePttEnabled = !current.hardwareVolumePttEnabled))
+    }
+
+    suspend fun toggleHardwareVolumePttToggleMode() {
+        val current = dao.getUserIdentitySync() ?: UserIdentity()
+        dao.insertOrUpdateIdentity(current.copy(hardwareVolumePttToggleMode = !current.hardwareVolumePttToggleMode))
+    }
+
+    suspend fun isCallsignTakenByOther(
+        callsign: String,
+        isForCurrentUser: Boolean = true,
+        excludeContactId: Long = -1L
+    ): Boolean {
+        val clean = callsign.trim()
+        if (clean.isBlank()) return false
+
+        if (isForCurrentUser) {
+            // Check if matches any existing contact or friend
+            if (dao.isContactCallsignTaken(clean, -1L)) return true
+            if (dao.isFriendCallsignTaken(clean)) return true
+        } else {
+            // Check if matches current user identity or user profile
+            val currentIdentity = dao.getUserIdentitySync()
+            if (currentIdentity?.callsign?.equals(clean, ignoreCase = true) == true) return true
+            val currentProfile = dao.getUserProfileSync()
+            if (currentProfile?.callsign?.equals(clean, ignoreCase = true) == true) return true
+            if (dao.isContactCallsignTaken(clean, excludeContactId)) return true
+            if (dao.isFriendCallsignTaken(clean)) return true
+        }
+        return false
+    }
+
+    suspend fun getAllRegisteredCallsigns(): Set<String> {
+        val set = mutableSetOf<String>()
+        dao.getUserIdentitySync()?.callsign?.let { if (it.isNotBlank()) set.add(it.uppercase()) }
+        dao.getUserProfileSync()?.callsign?.let { if (it.isNotBlank()) set.add(it.uppercase()) }
+        dao.getAllContactCallsignsSync().forEach { if (it.isNotBlank()) set.add(it.uppercase()) }
+        dao.getAllFriendCallsignsSync().forEach { if (it.isNotBlank()) set.add(it.uppercase()) }
+        return set
     }
 
     suspend fun toggleBackgroundMonitoring() {
@@ -461,6 +609,7 @@ class InstaWireRepository(private val dao: InstaWireDao) {
                 chirpSoundEnabled = true,
                 rogerBeepEnabled = true,
                 hardwareVolumePttEnabled = true,
+                hardwareVolumePttToggleMode = false,
                 backgroundMonitoringEnabled = true,
                 backgroundAudioBeepEnabled = true,
                 zeroLogsEnabled = true,

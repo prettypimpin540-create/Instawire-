@@ -61,7 +61,7 @@ fun WorldwideProfileDialog(
     profile: UserProfile,
     onDismiss: () -> Unit,
     onSaveProfile: (displayName: String, callsign: String, country: String, countryFlag: String, city: String, bio: String, languages: String) -> Unit,
-    onOpenBuyCoins: () -> Unit
+    onOpenBuyCoins: () -> Unit = {}
 ) {
     var isEditing by remember { mutableStateOf(false) }
     var displayName by remember(profile) { mutableStateOf(profile.displayName) }

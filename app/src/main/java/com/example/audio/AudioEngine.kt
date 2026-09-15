@@ -2,6 +2,7 @@ package com.example.audio
 
 import android.content.Context
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
@@ -13,6 +14,7 @@ import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.util.Log
 import com.example.data.model.NoaaWeatherStation
 import com.example.data.model.PublicScannerFeed
 import kotlinx.coroutines.CoroutineScope
@@ -28,6 +30,8 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 class AudioEngine(private val context: Context, private val scope: CoroutineScope) {
+
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
     private val vibrator: Vibrator? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager
@@ -69,7 +73,9 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
     private var scannerSimulationJob: Job? = null
     private var noaaSimulationJob: Job? = null
 
-    private var audioRecord: AudioRecord? = null
+    val coreRecordingService = CoreAudioRecordingService(context, scope)
+    val isNoiseSuppressionActive: StateFlow<Boolean> = coreRecordingService.isNoiseSuppressionActive
+
     private var isRecordingMic = false
     private var recordingJob: Job? = null
     private var animationJob: Job? = null
@@ -82,7 +88,12 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
         animationJob?.cancel()
         animationJob = scope.launch(Dispatchers.Default) {
             while (isActive) {
-                if (!isRecordingMic && !_isPlayingIncoming.value && !_isScannerPlaying.value && !_isNoaaPlaying.value) {
+                if (com.example.service.AudioCaptureForegroundService.isServiceRunning) {
+                    val state = com.example.service.AudioCaptureForegroundService.captureState.value
+                    _spectrumBars.value = state.spectrumBars
+                    _liveAudioAmplitude.value = state.amplitude
+                    delay(45)
+                } else if (!isRecordingMic && !_isPlayingIncoming.value && !_isScannerPlaying.value && !_isNoaaPlaying.value) {
                     val idleBars = List(16) { index ->
                         0.08f + (0.05f * sin((System.currentTimeMillis() / 250.0) + index).toFloat()).coerceAtLeast(0f)
                     }
@@ -96,8 +107,14 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
         }
     }
 
-    fun triggerPttPress(enableChirp: Boolean, soundProfile: com.example.data.model.PttSoundProfile = com.example.data.model.PttSoundProfile.NEXTEL_TACTICAL) {
-        vibrateShort(45)
+    fun triggerPttPress(
+        enableChirp: Boolean,
+        enableHaptic: Boolean = true,
+        soundProfile: com.example.data.model.PttSoundProfile = com.example.data.model.PttSoundProfile.NEXTEL_TACTICAL
+    ) {
+        if (enableHaptic) {
+            triggerHapticPttPress()
+        }
         if (enableChirp) {
             scope.launch(Dispatchers.IO) {
                 playProfilePressSound(soundProfile)
@@ -108,54 +125,41 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
 
     fun triggerPttRelease(
         enableRogerBeep: Boolean,
+        enableHaptic: Boolean = true,
         soundProfile: com.example.data.model.PttSoundProfile = com.example.data.model.PttSoundProfile.NEXTEL_TACTICAL,
         onFinished: (durationSec: Float, waveAmps: String) -> Unit
     ) {
-        vibrateShort(60)
-        val duration = stopMicrophoneCapture()
-        val randomAmps = List(8) { Random.nextInt(25, 98) }.joinToString(",")
+        if (enableHaptic) {
+            triggerHapticPttRelease()
+        }
+        val (duration, recordedAmps) = stopMicrophoneCapture()
         
         if (enableRogerBeep) {
             scope.launch(Dispatchers.IO) {
                 playProfileReleaseSound(soundProfile)
             }
         }
-        onFinished(duration, randomAmps)
+        onFinished(duration, recordedAmps)
     }
 
     private fun startMicrophoneCapture() {
         isRecordingMic = true
-        val startTime = System.currentTimeMillis()
+        coreRecordingService.startRecording()
 
         recordingJob?.cancel()
         recordingJob = scope.launch(Dispatchers.Default) {
-            var wavePhase = 0.0
             while (isActive && isRecordingMic) {
-                wavePhase += 0.3
-                val amp = 0.45f + (Random.nextFloat() * 0.55f)
-                _liveAudioAmplitude.value = amp
-
-                val bars = List(16) { i ->
-                    val raw = (0.2f + 0.8f * sin(wavePhase + (i * 0.4)).toFloat()).coerceIn(0.1f, 1f)
-                    (raw * amp).coerceIn(0.12f, 1f)
-                }
-                _spectrumBars.value = bars
-                delay(40)
+                _liveAudioAmplitude.value = coreRecordingService.amplitude.value
+                _spectrumBars.value = coreRecordingService.spectrumBars.value
+                delay(30)
             }
         }
     }
 
-    private fun stopMicrophoneCapture(): Float {
+    private fun stopMicrophoneCapture(): Pair<Float, String> {
         isRecordingMic = false
         recordingJob?.cancel()
-        try {
-            audioRecord?.stop()
-            audioRecord?.release()
-            audioRecord = null
-        } catch (e: Exception) {
-            // ignore
-        }
-        return Random.nextDouble(1.8, 4.5).toFloat()
+        return coreRecordingService.stopRecording()
     }
 
     fun playTransmissionAudio(durationSec: Float, waveAmps: String, enableSquelch: Boolean = true) {
@@ -168,27 +172,93 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
                 playSquelchBurst()
             }
 
-            // Animate wave playback
-            val totalSteps = (durationSec * 20).toInt().coerceAtLeast(10)
-            val ampValues = waveAmps.split(",").mapNotNull { it.trim().toFloatOrNull() }
-            
-            for (step in 0 until totalSteps) {
-                val baseAmp = if (ampValues.isNotEmpty()) {
-                    (ampValues[step % ampValues.size] / 100f).coerceIn(0.2f, 1f)
-                } else {
-                    Random.nextFloat() * 0.8f + 0.2f
-                }
-                _liveAudioAmplitude.value = baseAmp
-                _spectrumBars.value = List(16) { i ->
-                    (baseAmp * (0.3f + 0.7f * sin((step * 0.5) + i).toFloat())).coerceIn(0.1f, 1f)
-                }
-                delay(50)
+            // Zero-lag direct PCM playback if recorded audio is available
+            val recordedPcm = coreRecordingService.lastRecordedAudio.value
+            if (recordedPcm != null && recordedPcm.isNotEmpty()) {
+                playRawPcmDirect(recordedPcm, CoreAudioRecordingService.SAMPLE_RATE_HZ)
+            } else {
+                playSynthesizedVoiceTransmission(durationSec, waveAmps)
             }
 
             // Play Roger Beep on end of transmission
             playRogerBeep()
             _isPlayingIncoming.value = false
             _liveAudioAmplitude.value = 0.05f
+        }
+    }
+
+    private fun playRawPcmDirect(pcmBytes: ByteArray, sampleRate: Int) {
+        try {
+            val minBuf = AudioTrack.getMinBufferSize(
+                sampleRate,
+                AudioFormat.CHANNEL_OUT_MONO,
+                AudioFormat.ENCODING_PCM_16BIT
+            ).coerceAtLeast(1024)
+
+            val track = AudioTrack.Builder()
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build()
+                )
+                .setAudioFormat(
+                    AudioFormat.Builder()
+                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                        .setSampleRate(sampleRate)
+                        .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                        .build()
+                )
+                .setBufferSizeInBytes(minBuf)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+                    }
+                }
+                .build()
+
+            track.play()
+            val chunkSize = 640
+            var offset = 0
+            while (offset < pcmBytes.size && _isPlayingIncoming.value) {
+                val bytesToWrite = (pcmBytes.size - offset).coerceAtMost(chunkSize)
+                track.write(pcmBytes, offset, bytesToWrite)
+                offset += bytesToWrite
+
+                // Update live visualizer
+                val amp = 0.4f + (Random.nextFloat() * 0.5f)
+                _liveAudioAmplitude.value = amp
+                _spectrumBars.value = List(16) { i ->
+                    (amp * (0.3f + 0.7f * sin((offset / 320.0) + (i * 0.5)).toFloat())).coerceIn(0.1f, 1f)
+                }
+            }
+            try {
+                track.stop()
+                track.release()
+            } catch (e: Exception) {
+                // ignore
+            }
+        } catch (e: Exception) {
+            Log.e("AudioEngine", "Error in zero-lag direct PCM playback", e)
+        }
+    }
+
+    private suspend fun playSynthesizedVoiceTransmission(durationSec: Float, waveAmps: String) {
+        val totalSteps = (durationSec * 20).toInt().coerceAtLeast(10)
+        val ampValues = waveAmps.split(",").mapNotNull { it.trim().toFloatOrNull() }
+
+        for (step in 0 until totalSteps) {
+            val baseAmp = if (ampValues.isNotEmpty()) {
+                (ampValues[step % ampValues.size] / 100f).coerceIn(0.2f, 1f)
+            } else {
+                Random.nextFloat() * 0.8f + 0.2f
+            }
+            _liveAudioAmplitude.value = baseAmp
+            _spectrumBars.value = List(16) { i ->
+                (baseAmp * (0.3f + 0.7f * sin((step * 0.5) + i).toFloat())).coerceIn(0.1f, 1f)
+            }
+            delay(50)
         }
     }
 
@@ -502,6 +572,65 @@ class AudioEngine(private val context: Context, private val scope: CoroutineScop
                 track.release()
             } catch (e: Exception) {
                 // ignore
+            }
+        }
+    }
+
+    fun triggerHapticPttPress(enableHaptic: Boolean = true) {
+        if (!enableHaptic) return
+        vibrateShort(45)
+    }
+
+    fun triggerHapticPttRelease(enableHaptic: Boolean = true) {
+        if (!enableHaptic) return
+        vibrateShort(25)
+    }
+
+    fun triggerHapticBusyWarning(enableHaptic: Boolean = true) {
+        if (!enableHaptic) return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                vibrator?.vibrate(
+                    VibrationEffect.createWaveform(
+                        longArrayOf(0, 70, 50, 70, 50, 70),
+                        -1
+                    )
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                vibrator?.vibrate(longArrayOf(0, 70, 50, 70, 50, 70), -1)
+            }
+        } catch (e: Exception) {
+            vibrateShort(120)
+        }
+    }
+
+    fun setAudioRouting(toEarpiece: Boolean) {
+        audioManager?.let { am ->
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    val available = am.availableCommunicationDevices
+                    val targetType = if (toEarpiece) {
+                        AudioDeviceInfo.TYPE_BUILTIN_EARPIECE
+                    } else {
+                        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                    }
+                    val targetDevice = available.firstOrNull { it.type == targetType }
+                    if (targetDevice != null) {
+                        am.setCommunicationDevice(targetDevice)
+                        Log.d("AudioEngine", "Communication device routed to: ${targetDevice.productName} (type=$targetType)")
+                    } else {
+                        am.clearCommunicationDevice()
+                        am.isSpeakerphoneOn = !toEarpiece
+                    }
+                } else {
+                    @Suppress("DEPRECATION")
+                    am.mode = AudioManager.MODE_IN_COMMUNICATION
+                    @Suppress("DEPRECATION")
+                    am.isSpeakerphoneOn = !toEarpiece
+                }
+            } catch (e: Exception) {
+                Log.w("AudioEngine", "Failed to switch audio routing to earpiece=$toEarpiece", e)
             }
         }
     }

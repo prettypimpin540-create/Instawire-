@@ -6,8 +6,10 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.example.data.model.BurnerLine
+import com.example.data.model.BurnerNumberMetadata
 import com.example.data.model.Channel
 import com.example.data.model.Contact
+import com.example.data.model.EncryptedMessageRecord
 import com.example.data.model.Transmission
 import com.example.data.model.UserIdentity
 import kotlinx.coroutines.flow.Flow
@@ -57,6 +59,12 @@ interface InstaWireDao {
     @Query("SELECT * FROM channels")
     fun getAllChannels(): Flow<List<Channel>>
 
+    @Query("SELECT * FROM channels")
+    suspend fun getAllChannelsSync(): List<Channel>
+
+    @Query("SELECT * FROM channels WHERE frequencyCode = :code OR id = :code LIMIT 1")
+    suspend fun getChannelByCode(code: String): Channel?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertChannel(channel: Channel)
 
@@ -65,6 +73,9 @@ interface InstaWireDao {
 
     @Query("DELETE FROM channels WHERE id = :id")
     suspend fun deleteChannel(id: String)
+
+    @Query("DELETE FROM channels WHERE isSystemChannel = 1 OR id LIKE 'chan_%'")
+    suspend fun deleteSystemChannels()
 
     // Transmissions
     @Query("SELECT * FROM transmissions WHERE targetId = :targetId ORDER BY timestamp DESC LIMIT 50")
@@ -163,5 +174,82 @@ interface InstaWireDao {
 
     @Query("UPDATE user_profiles SET coinsBalance = coinsBalance - :coinsToDeduct WHERE id = 1 AND coinsBalance >= :coinsToDeduct")
     suspend fun deductCoins(coinsToDeduct: Int): Int
+
+    // ==========================================
+    // Local Encrypted Message History (Offline Access)
+    // ==========================================
+    @Query("SELECT * FROM encrypted_messages WHERE conversationId = :conversationId ORDER BY timestamp ASC LIMIT 100")
+    fun getEncryptedMessagesForConversation(conversationId: String): Flow<List<EncryptedMessageRecord>>
+
+    @Query("SELECT * FROM encrypted_messages ORDER BY timestamp DESC LIMIT 60")
+    fun getAllEncryptedMessages(): Flow<List<EncryptedMessageRecord>>
+
+    @Query("SELECT * FROM encrypted_messages WHERE id = :id")
+    suspend fun getEncryptedMessageById(id: Long): EncryptedMessageRecord?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEncryptedMessage(message: EncryptedMessageRecord): Long
+
+    @Query("UPDATE encrypted_messages SET deliveryStatus = :status WHERE id = :id")
+    suspend fun updateMessageDeliveryStatus(id: Long, status: String)
+
+    @Query("DELETE FROM encrypted_messages WHERE id = :id")
+    suspend fun deleteEncryptedMessage(id: Long)
+
+    @Query("DELETE FROM encrypted_messages WHERE conversationId = :conversationId")
+    suspend fun clearEncryptedMessagesForConversation(conversationId: String)
+
+    @Query("DELETE FROM encrypted_messages")
+    suspend fun clearAllEncryptedMessages()
+
+    // ==========================================
+    // Burner Number Metadata (Encrypted Offline Vault)
+    // ==========================================
+    @Query("SELECT * FROM burner_number_metadata ORDER BY allocatedAt DESC")
+    fun getAllBurnerMetadata(): Flow<List<BurnerNumberMetadata>>
+
+    @Query("SELECT * FROM burner_number_metadata")
+    suspend fun getAllBurnerMetadataSync(): List<BurnerNumberMetadata>
+
+    @Query("SELECT * FROM burner_number_metadata WHERE verificationStatus = 'ACTIVE'")
+    suspend fun getActiveBurnerMetadataSync(): List<BurnerNumberMetadata>
+
+    @Query("SELECT * FROM burner_number_metadata WHERE phoneNumber = :phoneNumber")
+    fun getBurnerMetadata(phoneNumber: String): Flow<BurnerNumberMetadata?>
+
+    @Query("SELECT * FROM burner_number_metadata WHERE phoneNumber = :phoneNumber")
+    suspend fun getBurnerMetadataSync(phoneNumber: String): BurnerNumberMetadata?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertBurnerMetadata(metadata: BurnerNumberMetadata)
+
+    @Query("UPDATE burner_number_metadata SET verificationStatus = :status WHERE phoneNumber = :phoneNumber")
+    suspend fun updateBurnerVerificationStatus(phoneNumber: String, status: String)
+
+    @Query("UPDATE burner_number_metadata SET verificationStatus = :status, firebaseUid = :firebaseUid WHERE phoneNumber = :phoneNumber")
+    suspend fun updateBurnerVerificationAndUid(phoneNumber: String, status: String, firebaseUid: String?)
+
+    @Query("UPDATE burner_number_metadata SET transmissionsUsed = transmissionsUsed + 1 WHERE phoneNumber = :phoneNumber")
+    suspend fun incrementBurnerTransmissionCount(phoneNumber: String)
+
+    @Query("DELETE FROM burner_number_metadata WHERE phoneNumber = :phoneNumber")
+    suspend fun deleteBurnerMetadata(phoneNumber: String)
+
+    @Query("DELETE FROM burner_number_metadata")
+    suspend fun clearAllBurnerMetadata()
+
+    // Callsign Uniqueness Validation
+    @Query("SELECT EXISTS(SELECT 1 FROM contacts WHERE UPPER(callsign) = UPPER(:callsign) AND id != :excludeContactId)")
+    suspend fun isContactCallsignTaken(callsign: String, excludeContactId: Long = -1L): Boolean
+
+    @Query("SELECT EXISTS(SELECT 1 FROM friends WHERE UPPER(callsign) = UPPER(:callsign))")
+    suspend fun isFriendCallsignTaken(callsign: String): Boolean
+
+    @Query("SELECT callsign FROM contacts")
+    suspend fun getAllContactCallsignsSync(): List<String>
+
+    @Query("SELECT callsign FROM friends")
+    suspend fun getAllFriendCallsignsSync(): List<String>
 }
+
 

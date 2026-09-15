@@ -18,6 +18,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Radio
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Tag
+import androidx.compose.material.icons.filled.VpnKey
+import androidx.compose.ui.platform.LocalClipboardManager
+import kotlin.random.Random
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -57,12 +63,16 @@ import com.example.ui.theme.TacticalTextSecondary
 @Composable
 fun AddContactDialog(
     onDismiss: () -> Unit,
+    checkCallsignConflict: (String) -> com.example.data.model.CallsignConflict = { com.example.data.model.CallsignConflict(false) },
     onAddContact: (name: String, number: String, callsign: String, isBurner: Boolean) -> Unit
 ) {
     var name by remember { mutableStateOf("") }
     var number by remember { mutableStateOf("") }
     var callsign by remember { mutableStateOf("") }
     var isBurner by remember { mutableStateOf(false) }
+
+    val callsignConflict = remember(callsign) { checkCallsignConflict(callsign) }
+    val isConflict = callsign.isNotBlank() && callsignConflict.isTaken
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -168,18 +178,37 @@ fun AddContactDialog(
                     value = callsign,
                     onValueChange = { callsign = it },
                     label = { Text("Tactical Callsign (e.g. ALPHA-9)", color = TacticalTextSecondary) },
+                    isError = isConflict,
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("contact_callsign_input"),
                     colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PttNeonGreen,
-                        unfocusedBorderColor = TacticalCardBorder,
+                        focusedBorderColor = if (isConflict) com.example.ui.theme.PttHotRed else PttNeonGreen,
+                        unfocusedBorderColor = if (isConflict) com.example.ui.theme.PttHotRed.copy(alpha = 0.6f) else TacticalCardBorder,
                         focusedTextColor = TacticalTextPrimary,
                         unfocusedTextColor = TacticalTextPrimary,
                         focusedContainerColor = TacticalSurface,
                         unfocusedContainerColor = TacticalSurface
                     )
                 )
+
+                if (isConflict) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "⚠️ Callsign already claimed by ${callsignConflict.takenBy}! Must be unique.",
+                        color = com.example.ui.theme.PttHotRed,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                } else if (callsign.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "✓ Unique callsign available",
+                        color = PttNeonGreen,
+                        fontSize = 11.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
@@ -193,18 +222,11 @@ fun AddContactDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Is VIP Burner Number?",
-                        color = TacticalTextPrimary,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Switch(
-                        checked = isBurner,
-                        onCheckedChange = { isBurner = it },
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = PttNeonGreen,
-                            checkedTrackColor = PttGreenDark
-                        )
+                        text = "End-to-End Encrypted (AES-256)",
+                        color = PttNeonGreen,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        fontFamily = FontFamily.Monospace
                     )
                 }
 
@@ -212,10 +234,11 @@ fun AddContactDialog(
 
                 Button(
                     onClick = {
-                        if (name.isNotBlank() && number.isNotBlank()) {
+                        if (name.isNotBlank() && number.isNotBlank() && !isConflict) {
                             onAddContact(name, number, callsign, isBurner)
                         }
                     },
+                    enabled = name.isNotBlank() && number.isNotBlank() && !isConflict,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(48.dp)
@@ -223,7 +246,9 @@ fun AddContactDialog(
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PttNeonGreen,
-                        contentColor = TacticalDarkBg
+                        contentColor = TacticalDarkBg,
+                        disabledContainerColor = TacticalSurfaceElevated,
+                        disabledContentColor = com.example.ui.theme.TacticalTextMuted
                     )
                 ) {
                     Text(
@@ -241,11 +266,16 @@ fun AddContactDialog(
 @Composable
 fun AddChannelDialog(
     onDismiss: () -> Unit,
-    onAddChannel: (name: String, frequency: String, description: String) -> Unit
+    onAddChannel: (name: String, frequency: String, frequencyCode: String, description: String, isEncrypted: Boolean) -> Unit
 ) {
     var channelName by remember { mutableStateOf("") }
-    var frequency by remember { mutableStateOf("462.7000 MHz") }
+    var frequencyCode by remember {
+        val randomNum = Random.nextInt(1000, 9999)
+        mutableStateOf("FRQ-$randomNum")
+    }
+    var frequency by remember { mutableStateOf("462.5625 MHz (FRS 1)") }
     var description by remember { mutableStateOf("") }
+    var isEncrypted by remember { mutableStateOf(true) }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -286,13 +316,20 @@ fun AddChannelDialog(
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "CREATE FREQUENCY CHANNEL",
-                            color = TacticalCyan,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 14.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
+                        Column {
+                            Text(
+                                text = "CREATE CUSTOM CHANNEL",
+                                color = TacticalCyan,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = "Share code with others to join",
+                                color = TacticalTextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
                     }
                     IconButton(
                         onClick = onDismiss,
@@ -320,6 +357,40 @@ fun AddChannelDialog(
                         unfocusedBorderColor = TacticalCardBorder,
                         focusedTextColor = TacticalTextPrimary,
                         unfocusedTextColor = TacticalTextPrimary,
+                        focusedContainerColor = TacticalSurface,
+                        unfocusedContainerColor = TacticalSurface
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Frequency Code Field with Regenerate Button
+                OutlinedTextField(
+                    value = frequencyCode,
+                    onValueChange = { frequencyCode = it.uppercase() },
+                    label = { Text("Frequency Code to Share (e.g. FRQ-7734)", color = TacticalTextSecondary) },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                val randomNum = Random.nextInt(1000, 9999)
+                                frequencyCode = "FRQ-$randomNum"
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Generate New Code",
+                                tint = TacticalCyan
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("channel_frequency_code_input"),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = TacticalCyan,
+                        unfocusedBorderColor = TacticalCardBorder,
+                        focusedTextColor = TacticalCyan,
+                        unfocusedTextColor = TacticalCyan,
                         focusedContainerColor = TacticalSurface,
                         unfocusedContainerColor = TacticalSurface
                     )
@@ -363,12 +434,54 @@ fun AddChannelDialog(
                     )
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(TacticalSurface)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "End-to-End Encryption (AES-256)",
+                            color = TacticalTextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Protects voice audio on this frequency",
+                            color = TacticalTextSecondary,
+                            fontSize = 10.sp
+                        )
+                    }
+                    Switch(
+                        checked = isEncrypted,
+                        onCheckedChange = { isEncrypted = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = TacticalCyan,
+                            checkedTrackColor = TacticalCyan.copy(alpha = 0.3f),
+                            uncheckedThumbColor = TacticalTextSecondary,
+                            uncheckedTrackColor = TacticalCardBorder
+                        )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(18.dp))
 
                 Button(
                     onClick = {
                         if (channelName.isNotBlank()) {
-                            onAddChannel(channelName, frequency, description)
+                            onAddChannel(
+                                channelName.trim(),
+                                frequency.trim(),
+                                frequencyCode.trim(),
+                                description.trim(),
+                                isEncrypted
+                            )
                         }
                     },
                     modifier = Modifier
@@ -382,7 +495,177 @@ fun AddChannelDialog(
                     )
                 ) {
                     Text(
-                        text = "LOCK ENCRYPTED CHANNEL",
+                        text = "CREATE CHANNEL & ACTIVATE CODE",
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun JoinChannelDialog(
+    onDismiss: () -> Unit,
+    onJoinChannel: (code: String, customName: String) -> Unit
+) {
+    val clipboardManager = LocalClipboardManager.current
+    var frequencyCode by remember { mutableStateOf("") }
+    var customName by remember { mutableStateOf("") }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .clip(RoundedCornerShape(20.dp))
+                .border(1.dp, TacticalCyan.copy(alpha = 0.5f), RoundedCornerShape(20.dp))
+                .testTag("join_channel_dialog"),
+            colors = CardDefaults.cardColors(containerColor = TacticalDarkBg)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .background(TacticalCyan.copy(alpha = 0.2f))
+                                .border(1.dp, TacticalCyan, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VpnKey,
+                                contentDescription = "Join Channel",
+                                tint = TacticalCyan,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "JOIN CHANNEL BY CODE",
+                                color = TacticalCyan,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 13.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = "Tune into a shared frequency code",
+                                color = TacticalTextSecondary,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.testTag("close_join_channel_dialog")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = TacticalTextSecondary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Enter the frequency code provided by the squad or channel creator (e.g. FRQ-7734):",
+                    color = TacticalTextPrimary,
+                    fontSize = 12.sp
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                OutlinedTextField(
+                    value = frequencyCode,
+                    onValueChange = { frequencyCode = it.uppercase().trim() },
+                    label = { Text("Frequency Code (e.g. FRQ-7734)", color = TacticalTextSecondary) },
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                val text = clipboardManager.getText()?.text
+                                if (!text.isNullOrBlank()) {
+                                    frequencyCode = text.trim().uppercase()
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentPaste,
+                                contentDescription = "Paste Code",
+                                tint = TacticalCyan
+                            )
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("join_code_input"),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = TacticalCyan,
+                        unfocusedBorderColor = TacticalCardBorder,
+                        focusedTextColor = TacticalCyan,
+                        unfocusedTextColor = TacticalCyan,
+                        focusedContainerColor = TacticalSurface,
+                        unfocusedContainerColor = TacticalSurface
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                OutlinedTextField(
+                    value = customName,
+                    onValueChange = { customName = it },
+                    label = { Text("Optional Channel Nickname", color = TacticalTextSecondary) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("join_nickname_input"),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = TacticalCyan,
+                        unfocusedBorderColor = TacticalCardBorder,
+                        focusedTextColor = TacticalTextPrimary,
+                        unfocusedTextColor = TacticalTextPrimary,
+                        focusedContainerColor = TacticalSurface,
+                        unfocusedContainerColor = TacticalSurface
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Button(
+                    onClick = {
+                        if (frequencyCode.isNotBlank()) {
+                            onJoinChannel(frequencyCode, customName)
+                        }
+                    },
+                    enabled = frequencyCode.isNotBlank(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .testTag("submit_join_channel_button"),
+                    shape = RoundedCornerShape(10.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TacticalCyan,
+                        contentColor = TacticalDarkBg,
+                        disabledContainerColor = TacticalSurface,
+                        disabledContentColor = TacticalTextSecondary
+                    )
+                ) {
+                    Text(
+                        text = "TUNE IN & JOIN CHANNEL",
                         fontWeight = FontWeight.Black,
                         fontSize = 12.sp,
                         fontFamily = FontFamily.Monospace
